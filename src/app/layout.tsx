@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
+import ClerkProviderClient from "@/lib/ClerkProviderClient";
 import { TRPCProvider } from "@/lib/providers";
 import "./globals.css";
 
@@ -15,12 +15,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
-      <html lang="en">
-        <body>
-          <TRPCProvider>{children}</TRPCProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en">
+      <body className="min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900">
+        <ClerkProviderClient>
+          <div className="min-h-screen">
+            <div className="bg-transparent">
+              <div className="max-w-5xl mx-auto">
+                <TRPCProvider>
+                  {children}
+                </TRPCProvider>
+              </div>
+            </div>
+          </div>
+        </ClerkProviderClient>
+      </body>
+    </html>
   );
 }
