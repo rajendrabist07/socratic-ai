@@ -9,6 +9,7 @@ export const chatRouter = createTRPCRouter({
       z.object({
         sessionId: z.string().min(1), // MongoDB ObjectId
         content: z.string().min(1).max(4000),
+        mode: z.enum(["ask", "answer"]).default("ask"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -44,14 +45,21 @@ export const chatRouter = createTRPCRouter({
       const trimmed = trimHistory(history);
 
       // 4. Call Groq
-      const response = await askSocratic(trimmed, input.content);
+      const response = await askSocratic(trimmed, input.content, input.mode);
+
+      const assistantContent =
+        input.mode === "answer"
+          ? [response.answer ?? response.question, response.question]
+              .filter(Boolean)
+              .join("\n\n")
+          : response.question;
 
       // 5. Persist assistant message (question only — not the internal thinking)
       const assistantMessage = await ctx.db.message.create({
         data: {
           sessionId: session.id,
           role: "ASSISTANT",
-          content: response.question,
+          content: assistantContent,
           thinking: response.thinking,
         },
       });

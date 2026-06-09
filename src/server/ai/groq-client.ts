@@ -1,4 +1,5 @@
 import Groq from "groq-sdk";
+import { TRPCError } from "@trpc/server";
 import { env } from "@/env";
 
 // ─── Singleton client ────────────────────────────────────────────────────────
@@ -9,20 +10,22 @@ export const groq = new Groq({
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+export type ChatMode = "ask" | "answer";
+
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
 }
 
 export interface SocraticResponse {
-  question: string;       // The guiding question posed back to the student
-  thinking: string;       // Internal chain-of-thought (not shown to student)
-  followUpHints: string[]; // Optional nudges if the student is stuck
+  question: string; // The guiding question or follow-up question for the student.
+  thinking: string; // Internal chain-of-thought (not shown to student)
+  followUpHints: string[]; // Optional nudges if the student is stuck.
+  answer?: string; // A direct explanation when using answer mode.
 }
 
-// ─── System prompt ───────────────────────────────────────────────────────────
-
-export const SOCRATIC_SYSTEM_PROMPT = `
+const SOCRATIC_SYSTEM_PROMPTS: Record<ChatMode, string> = {
+  ask: `
 You are SocraticAI — a Socratic learning tutor. Your purpose is to guide students
 to understanding through questioning, NEVER by providing direct answers.
 
@@ -42,57 +45,105 @@ RESPONSE FORMAT (strict JSON):
   "thinking": "<your internal reasoning about where the student is and what they need>",
   "followUpHints": ["<hint 1 if stuck>", "<hint 2 if stuck>"]
 }
-`.trim();
+`.trim(),
+  answer: `
+You are SocraticAI — a helpful, world-class tutor in Direct Explanation mode.
+The student asked for a clear answer and a deeper understanding. Your job is to:
+1. Provide a concise, accurate explanation or solution.
+2. Keep the explanation friendly and easy to follow.
+3. End with one short follow-up question that helps the student extend their
+   understanding or apply the idea.
+4. Avoid bullet points, numbered lists, or markdown.
 
-// ─── Core inference function ─────────────────────────────────────────────────
+RESPONSE FORMAT (strict JSON):
+{
+  "answer": "<a direct explanation or answer>",
+  "question": "<one short follow-up question>",
+  "thinking": "<your internal reasoning about the student's needs>",
+  "followUpHints": ["<hint 1 if stuck>", "<hint 2 if stuck>"]
+}
+`.trim(),
+};
 
 export async function askSocratic(
   history: ChatMessage[],
   userMessage: string,
+  mode: ChatMode = "ask",
 ): Promise<SocraticResponse> {
   const messages: ChatMessage[] = [
-    { role: "system", content: SOCRATIC_SYSTEM_PROMPT },
+    { role: "system", content: SOCRATIC_SYSTEM_PROMPTS[mode] },
     ...history,
     { role: "user", content: userMessage },
   ];
 
-  const completion = await groq.chat.completions.create({
-    model: env.GROQ_MODEL,
-    messages,
-    temperature: 0.7,
-    max_tokens: 1024,
-    response_format: { type: "json_object" },
-  });
+  let completion;
+
+  try {
+    completion = await groq.chat.completions.create({
+      model: env.GROQ_MODEL,
+      messages,
+      temperature: 0.7,
+      max_tokens: 1024,
+      response_format: { type: "json_object" },
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Groq request failed with an unknown error.";
+
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: `Groq request failed: ${message}. Please verify your GROQ_API_KEY and model configuration.`,
+    });
+  }
 
   const raw = completion.choices[0]?.message?.content;
 
   if (!raw) {
-    throw new Error("Groq returned an empty response");
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Groq returned an empty response. Please try again or check your model prompt.",
+    });
   }
 
-  const parsed = JSON.parse(raw) as Partial<SocraticResponse>;
+  let parsed: Partial<SocraticResponse>;
+
+  try {
+    parsed = JSON.parse(raw) as Partial<SocraticResponse>;
+  } catch (error) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Failed to parse Groq response. The AI response is not valid JSON.",
+    });
+  }
 
   if (!parsed.question || typeof parsed.question !== "string") {
-    throw new Error("Invalid Groq response shape: missing 'question' field");
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Invalid Groq response shape: missing 'question' field.",
+    });
+  }
+
+  if (mode === "answer" && (!parsed.answer || typeof parsed.answer !== "string")) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Invalid Groq response shape: missing 'answer' field in answer mode.",
+    });
   }
 
   return {
     question: parsed.question,
+    answer: typeof parsed.answer === "string" ? parsed.answer : undefined,
     thinking: parsed.thinking ?? "",
-    followUpHints: Array.isArray(parsed.followUpHints)
-      ? parsed.followUpHints
-      : [],
+    followUpHints: Array.isArray(parsed.followUpHints) ? parsed.followUpHints : [],
   };
 }
-
-// ─── Token-aware history trimmer ─────────────────────────────────────────────
-// Groq context windows are large but finite — keep the last N turns.
 
 export function trimHistory(
   history: ChatMessage[],
   maxTurns = 20,
 ): ChatMessage[] {
-  // Always keep the system prompt out of this array; it's prepended in askSocratic.
   const userAndAssistant = history.filter((m) => m.role !== "system");
-  return userAndAssistant.slice(-maxTurns * 2); // Each turn = user + assistant
+  return userAndAssistant.slice(-maxTurns * 2);
 }
