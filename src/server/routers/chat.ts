@@ -47,19 +47,12 @@ export const chatRouter = createTRPCRouter({
       // 4. Call Groq
       const response = await askSocratic(trimmed, input.content, input.mode);
 
-      const assistantContent =
-        input.mode === "answer"
-          ? [response.answer ?? response.question, response.question]
-              .filter(Boolean)
-              .join("\n\n")
-          : response.question;
-
       // 5. Persist assistant message (question only — not the internal thinking)
       const assistantMessage = await ctx.db.message.create({
         data: {
           sessionId: session.id,
           role: "ASSISTANT",
-          content: assistantContent,
+          content: response.question,
           thinking: response.thinking,
         },
       });

@@ -12,7 +12,7 @@ const server = z.object({
 
   // Groq
   GROQ_API_KEY: z.string().min(1),
-  GROQ_MODEL: z.string().default("gemma-7b-it"),
+  GROQ_MODEL: z.string().default("llama-3.3-70b-versatile"),
 });
 
 const client = z.object({

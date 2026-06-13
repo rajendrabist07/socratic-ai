@@ -21,10 +21,6 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
     () => buildTimelinePoints(data.scoreTimeline),
     [data.scoreTimeline],
   );
-  const breakthroughIndex = useMemo(
-    () => getBreakthroughIndex(data.scoreTimeline),
-    [data.scoreTimeline],
-  );
   const polylinePoints = timeline
     .map((point) => `${point.x},${point.y}`)
     .join(" ");
@@ -124,42 +120,19 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
                   vectorEffect="non-scaling-stroke"
                 />
               ) : null}
-              {timeline.map((point, index) => {
-                const isBreakthrough = index === breakthroughIndex;
-
-                return (
-                  <g key={`${point.score}-${index}`}>
-                    <circle
-                      cx={point.x}
-                      cy={point.y}
-                      r={isBreakthrough ? 3.2 : 2.3}
-                      className={
-                        isBreakthrough
-                          ? "fill-emerald-500 stroke-white"
-                          : "fill-white stroke-slate-700"
-                      }
-                      strokeWidth={isBreakthrough ? 1.7 : 1.3}
-                      vectorEffect="non-scaling-stroke"
-                    >
-                      <title>
-                        {isBreakthrough
-                          ? `Breakthrough point: ${point.score}/100, message ${data.breakthroughMessageId}`
-                          : `Message ${index + 1}: ${point.score}/100`}
-                      </title>
-                    </circle>
-                    {isBreakthrough ? (
-                      <circle
-                        cx={point.x}
-                        cy={point.y}
-                        r="5.2"
-                        className="fill-emerald-500/20 stroke-emerald-500"
-                        strokeWidth="0.7"
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    ) : null}
-                  </g>
-                );
-              })}
+              {timeline.map((point, index) => (
+                <circle
+                  key={`${point.score}-${index}`}
+                  cx={point.x}
+                  cy={point.y}
+                  r="2.6"
+                  className="fill-white stroke-slate-700"
+                  strokeWidth="1.3"
+                  vectorEffect="non-scaling-stroke"
+                >
+                  <title>{`Message ${index + 1}: ${point.score}/100`}</title>
+                </circle>
+              ))}
             </svg>
           </div>
         ) : (
@@ -169,8 +142,8 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
         )}
 
         <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-          Breakthrough point
+          <span className="h-2.5 w-2.5 rounded-full border border-slate-700 bg-white" />
+          Student message score
         </div>
       </div>
 
@@ -236,18 +209,6 @@ function buildTimelinePoints(scores: number[]): TimelinePoint[] {
       y: scoreToY(score),
     };
   });
-}
-
-function getBreakthroughIndex(scores: number[]): number {
-  if (scores.length === 0) {
-    return -1;
-  }
-
-  return scores.reduce((bestIndex, score, index) => {
-    return score > (scores[bestIndex] ?? Number.NEGATIVE_INFINITY)
-      ? index
-      : bestIndex;
-  }, 0);
 }
 
 function scoreToY(score: number): number {

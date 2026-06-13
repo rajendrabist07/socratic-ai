@@ -102,16 +102,14 @@ export const messageRouter = createTRPCRouter({
             ...history,
           ],
           temperature: 0.7,
-          max_tokens: 180,
+          max_tokens: 100,
           stream: true,
         });
-
-        const readableStream = groqStream.toReadableStream();
 
         return streamTokensAndSaveAssistantMessage({
           ctx,
           sessionId: session.id,
-          readableStream,
+          stream: groqStream,
         });
       } catch (error) {
         if (isGroqRateLimitError(error)) {
@@ -165,55 +163,28 @@ async function getAverageComprehensionScore(
 function streamTokensAndSaveAssistantMessage({
   ctx,
   sessionId,
-  readableStream,
+  stream,
 }: {
   ctx: ProtectedContext;
   sessionId: string;
-  readableStream: ReadableStream;
+  stream: AsyncIterable<StreamChunk>;
 }): AsyncIterable<string> {
   return {
     async *[Symbol.asyncIterator]() {
-      const decoder = new TextDecoder();
-      const reader = readableStream.getReader();
-      let buffer = "";
       let assistantContent = "";
 
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
+      for await (const chunk of stream) {
+        const token = chunk.choices?.[0]?.delta?.content ?? "";
 
-          if (done) {
-            break;
-          }
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-
-          for (const line of lines) {
-            const token = getTokenFromJsonLine(line);
-
-            if (!token) {
-              continue;
-            }
-
-            assistantContent += token;
-            yield token;
-          }
+        if (!token) {
+          continue;
         }
 
-        buffer += decoder.decode();
-        const finalToken = getTokenFromJsonLine(buffer);
-
-        if (finalToken) {
-          assistantContent += finalToken;
-          yield finalToken;
-        }
-      } finally {
-        reader.releaseLock();
+        assistantContent += token;
+        yield token;
       }
 
-      const content = assistantContent.trim();
+      const content = enforceOneVisibleQuestion(assistantContent);
 
       if (content.length > 0) {
         await ctx.db.message.create({
@@ -226,21 +197,6 @@ function streamTokensAndSaveAssistantMessage({
       }
     },
   };
-}
-
-function getTokenFromJsonLine(line: string): string {
-  const trimmed = line.trim();
-
-  if (!trimmed) {
-    return "";
-  }
-
-  try {
-    const parsed = JSON.parse(trimmed) as StreamChunk;
-    return parsed.choices?.[0]?.delta?.content ?? "";
-  } catch {
-    return "";
-  }
 }
 
 function buildConversationHistory(
@@ -266,7 +222,7 @@ async function scoreComprehensionAndSave({
   conversationHistory: string;
 }): Promise<void> {
   try {
-    const { score } = await scoreComprehension(
+    const { score, misconceptionTag } = await scoreComprehension(
       topic,
       userContent,
       conversationHistory,
@@ -274,11 +230,21 @@ async function scoreComprehensionAndSave({
 
     await ctx.db.message.update({
       where: { id: messageId },
-      data: { comprehensionScore: score },
+      data: { comprehensionScore: score, misconceptionTag },
     });
   } catch {
     // Fire-and-forget scoring must never delay or fail the streaming response.
   }
+}
+
+function enforceOneVisibleQuestion(value: string): string {
+  const cleaned = value.replace(/\s+/g, " ").trim();
+  const firstQuestion = cleaned.match(/[^?]*\?/u)?.[0]?.trim();
+  const question = firstQuestion && firstQuestion.length > 0 ? firstQuestion : cleaned;
+  const words = question.split(/\s+/).filter(Boolean);
+  const capped = words.length > 80 ? `${words.slice(0, 80).join(" ")}?` : question;
+
+  return capped.endsWith("?") ? capped : `${capped}?`;
 }
 
 function isGroqRateLimitError(error: unknown): boolean {

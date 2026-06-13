@@ -13,7 +13,6 @@ export interface ComprehensionScore {
 }
 
 export interface ThinkingMapData {
-  breakthroughMessageId: string;
   misconceptions: string[];
   scoreTimeline: number[];
   summary: string;
@@ -134,15 +133,13 @@ export async function generateThinkingMap(
 You generate SocraticAI Thinking Map data from a tutoring session.
 Return only valid JSON with exactly this shape:
 {
-  "breakthroughMessageId": "message-id",
-  "misconceptions": ["short misconception phrase"],
-  "scoreTimeline": [0, 25, 50],
   "summary": "one concise paragraph",
-  "keyInsight": "one concise sentence"
+  "keyInsight": "one concise sentence",
+  "misconceptions": ["short misconception phrase"],
+  "scoreTimeline": [0, 25, 50]
 }
 
 Rules:
-- breakthroughMessageId must be one of the provided message ids.
 - misconceptions must contain short phrases only; use [] if none are clear.
 - scoreTimeline must be numeric scores from student messages in chronological order.
 - summary must describe the student's reasoning path, not praise them.
@@ -174,7 +171,7 @@ Rules:
     return fallback;
   }
 
-  return normalizeThinkingMapData(parsed, fallback, orderedMessages);
+  return normalizeThinkingMapData(parsed, fallback);
 }
 
 async function withAnalysisTimeout<T>(
@@ -235,17 +232,8 @@ function normalizeComprehensionScore(
 function normalizeThinkingMapData(
   parsed: Record<string, unknown>,
   fallback: ThinkingMapData,
-  messages: Message[],
 ): ThinkingMapData {
-  const validMessageIds = new Set(messages.map((message) => message.id));
-  const breakthroughMessageId =
-    typeof parsed.breakthroughMessageId === "string" &&
-    validMessageIds.has(parsed.breakthroughMessageId)
-      ? parsed.breakthroughMessageId
-      : fallback.breakthroughMessageId;
-
   return {
-    breakthroughMessageId,
     misconceptions: normalizeStringArray(parsed.misconceptions, 8),
     scoreTimeline: normalizeScoreTimeline(parsed.scoreTimeline, fallback.scoreTimeline),
     summary:
@@ -287,25 +275,12 @@ function buildFallbackThinkingMap(
   messages: Message[],
 ): ThinkingMapData {
   const userMessages = messages.filter((message) => message.role === "USER");
-  const scoredMessages = userMessages.filter(
-    (message) => typeof message.comprehensionScore === "number",
-  );
-  const breakthrough =
-    scoredMessages.reduce<Message | null>((best, message) => {
-      if (!best) {
-        return message;
-      }
-
-      return (message.comprehensionScore ?? 0) > (best.comprehensionScore ?? 0)
-        ? message
-        : best;
-    }, null) ??
-    userMessages[userMessages.length - 1] ??
-    messages[messages.length - 1];
+  const misconceptionTags = userMessages
+    .map((message) => message.misconceptionTag)
+    .filter((tag): tag is string => typeof tag === "string" && tag.length > 0);
 
   return {
-    breakthroughMessageId: breakthrough?.id ?? session.id,
-    misconceptions: [],
+    misconceptions: Array.from(new Set(misconceptionTags)).slice(0, 8),
     scoreTimeline: userMessages
       .map((message) => message.comprehensionScore)
       .filter((score): score is number => typeof score === "number")
