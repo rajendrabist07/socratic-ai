@@ -9,7 +9,7 @@ export default function HomePage() {
             <span className="inline-flex items-center rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-sm font-semibold text-indigo-200">
               Socratic learning made simple
             </span>
-            <h1 className="mt-6 text-4xl font-semibold tracking-tight text-white sm:text-6xl">
+            <h1 className="mt-6 text-4xl font-semibold tracking-tight text-foreground sm:text-6xl">
               Learn by asking better questions.
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-8 text-muted sm:text-lg">
@@ -24,14 +24,14 @@ export default function HomePage() {
               </Link>
               <Link
                 href="/dashboard"
-                className="inline-flex items-center justify-center rounded-full border border-border bg-surface-elevated px-6 py-3 text-sm font-semibold text-white transition hover:border-white/20 hover:bg-zinc-800 active:scale-95"
+                className="inline-flex items-center justify-center rounded-full border border-border bg-surface-elevated px-6 py-3 text-sm font-semibold text-foreground transition hover:border-accent/30 hover:bg-surface active:scale-95"
               >
                 View dashboard
               </Link>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-background p-6 text-white shadow-soft sm:rounded-[2rem] sm:p-8">
+          <div className="rounded-2xl border border-border bg-background p-6 text-foreground shadow-soft sm:rounded-[2rem] sm:p-8">
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-accent">Start your first session</p>
             <h2 className="mt-4 text-3xl font-semibold">Ask questions — explore answers.</h2>
             <p className="mt-4 text-muted">
@@ -39,11 +39,11 @@ export default function HomePage() {
             </p>
             <div className="mt-6 space-y-4 text-sm text-muted">
               <div className="rounded-2xl border border-border bg-surface px-4 py-3">
-                <strong className="block text-white">Track progress</strong>
+                <strong className="block text-foreground">Track progress</strong>
                 Save and return to ongoing learning sessions.
               </div>
               <div className="rounded-2xl border border-border bg-surface px-4 py-3">
-                <strong className="block text-white">Build understanding</strong>
+                <strong className="block text-foreground">Build understanding</strong>
                 Practice asking questions that uncover what matters most.
               </div>
             </div>

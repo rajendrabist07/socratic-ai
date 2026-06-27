@@ -9,15 +9,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#0A0A0B",
-        surface: "#111114",
-        "surface-elevated": "#17171C",
-        border: "rgba(255,255,255,0.1)",
-        muted: "#A1A1AA",
+        background: "var(--color-background)",
+        foreground: "var(--color-foreground)",
+        surface: "var(--color-surface)",
+        "surface-elevated": "var(--color-surface-elevated)",
+        border: "var(--color-border)",
+        muted: "var(--color-muted)",
         accent: "#6366F1",
       },
       boxShadow: {
-        soft: "0 18px 60px rgba(0,0,0,0.28)",
+        soft: "var(--shadow-soft)",
         glow: "0 18px 45px rgba(99,102,241,0.18)",
       },
       keyframes: {

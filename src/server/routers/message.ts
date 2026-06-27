@@ -1,9 +1,13 @@
-import Groq from "groq-sdk";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { env } from "@/env";
 import { scoreComprehension } from "@/server/ai/analysis";
-import { groq, trimHistory, type ChatMessage } from "@/server/ai/groq-client";
+import {
+  groq,
+  throwFriendlyGroqError,
+  trimHistory,
+  type ChatMessage,
+} from "@/server/ai/groq-client";
 import {
   buildSocraticPrompt,
   type Message as SocraticPromptMessage,
@@ -112,14 +116,11 @@ export const messageRouter = createTRPCRouter({
           stream: groqStream,
         });
       } catch (error) {
-        if (isGroqRateLimitError(error)) {
-          throw new TRPCError({
-            code: "TOO_MANY_REQUESTS",
-            message: "Too many requests, please wait a moment",
-          });
-        }
-
-        throw error;
+        throwFriendlyGroqError(error, {
+          operation: "message.send.stream.create",
+          userId: ctx.userId,
+          sessionId: session.id,
+        });
       }
     }),
 });
@@ -173,15 +174,23 @@ function streamTokensAndSaveAssistantMessage({
     async *[Symbol.asyncIterator]() {
       let assistantContent = "";
 
-      for await (const chunk of stream) {
-        const token = chunk.choices?.[0]?.delta?.content ?? "";
+      try {
+        for await (const chunk of stream) {
+          const token = chunk.choices?.[0]?.delta?.content ?? "";
 
-        if (!token) {
-          continue;
+          if (!token) {
+            continue;
+          }
+
+          assistantContent += token;
+          yield token;
         }
-
-        assistantContent += token;
-        yield token;
+      } catch (error) {
+        throwFriendlyGroqError(error, {
+          operation: "message.send.stream.iterate",
+          userId: ctx.userId,
+          sessionId,
+        });
       }
 
       const content = enforceOneVisibleQuestion(assistantContent);
@@ -232,7 +241,13 @@ async function scoreComprehensionAndSave({
       where: { id: messageId },
       data: { comprehensionScore: score, misconceptionTag },
     });
-  } catch {
+  } catch (error) {
+    console.error("Comprehension scoring failed", {
+      operation: "scoreComprehensionAndSave",
+      userId: ctx.userId,
+      messageId,
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
     // Fire-and-forget scoring must never delay or fail the streaming response.
   }
 }
@@ -245,14 +260,4 @@ function enforceOneVisibleQuestion(value: string): string {
   const capped = words.length > 80 ? `${words.slice(0, 80).join(" ")}?` : question;
 
   return capped.endsWith("?") ? capped : `${capped}?`;
-}
-
-function isGroqRateLimitError(error: unknown): boolean {
-  return (
-    error instanceof Groq.RateLimitError ||
-    (typeof error === "object" &&
-      error !== null &&
-      "status" in error &&
-      error.status === 429)
-  );
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { toFriendlyErrorMessage } from "@/lib/errors";
 
 interface ChatInputProps {
   sessionId: string;
@@ -20,15 +21,31 @@ export function ChatInput({
 }: ChatInputProps) {
   const [value, setValue] = useState("");
   const [streamError, setStreamError] = useState<string | null>(null);
+  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+  const [isTakingLonger, setIsTakingLonger] = useState(false);
 
   const sendMessage = trpc.message.send.useMutation();
 
-  const handleSubmit = async () => {
-    const trimmed = value.trim();
+  useEffect(() => {
+    if (!sendMessage.isPending) {
+      setIsTakingLonger(false);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setIsTakingLonger(true);
+    }, 15_000);
+
+    return () => window.clearTimeout(timeout);
+  }, [sendMessage.isPending]);
+
+  const sendContent = async (content: string) => {
+    const trimmed = content.trim();
     if (!trimmed || sendMessage.isPending) return;
 
     setValue("");
     setStreamError(null);
+    setLastFailedMessage(null);
     onUserMessage?.(trimmed);
     onAssistantStart?.();
 
@@ -44,12 +61,24 @@ export function ChatInput({
 
       onMessageSent?.();
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to send your message. Please try again.";
-      setStreamError(message);
+      setStreamError(
+        toFriendlyErrorMessage(
+          error,
+          "Unable to send your message. Please try again.",
+        ),
+      );
+      setLastFailedMessage(trimmed);
       onMessageSent?.();
+    }
+  };
+
+  const handleSubmit = () => {
+    void sendContent(value);
+  };
+
+  const handleRetry = () => {
+    if (lastFailedMessage) {
+      void sendContent(lastFailedMessage);
     }
   };
 
@@ -63,7 +92,7 @@ export function ChatInput({
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSubmit()}
           placeholder="Share your question or current thinking..."
           disabled={sendMessage.isPending}
-          className="min-w-0 flex-1 rounded-2xl border border-border bg-background/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-accent/60 focus:ring-2 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-60 sm:rounded-3xl"
+          className="min-w-0 flex-1 rounded-2xl border border-border bg-background/70 px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted/70 focus:border-accent/60 focus:ring-2 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-60 sm:rounded-3xl"
         />
         <button
           onClick={handleSubmit}
@@ -75,10 +104,44 @@ export function ChatInput({
       </div>
 
       {streamError || sendMessage.error ? (
-        <p className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-          {streamError ??
-            sendMessage.error?.message ??
-            "Unable to send your message. Please try again."}
+        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              {streamError ??
+                toFriendlyErrorMessage(
+                  sendMessage.error,
+                  "Unable to send your message. Please try again.",
+                )}
+            </p>
+            <div className="flex shrink-0 gap-2">
+              {lastFailedMessage ? (
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="rounded-full bg-red-500/15 px-3 py-1.5 text-xs font-semibold transition hover:bg-red-500/25 active:scale-95"
+                >
+                  Retry
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setStreamError(null);
+                  setLastFailedMessage(null);
+                  sendMessage.reset();
+                }}
+                className="rounded-full bg-red-500/15 px-3 py-1.5 text-xs font-semibold transition hover:bg-red-500/25 active:scale-95"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isTakingLonger ? (
+        <p className="rounded-2xl border border-border bg-surface-elevated px-4 py-3 text-sm text-muted">
+          This is taking longer than usual...
         </p>
       ) : null}
     </div>

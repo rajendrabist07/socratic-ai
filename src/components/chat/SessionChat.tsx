@@ -9,6 +9,7 @@ import {
 } from "./ChatMessageList";
 import { ThinkingMap } from "@/components/thinking-map/ThinkingMap";
 import type { ThinkingMapData } from "@/server/ai/analysis";
+import { toFriendlyErrorMessage } from "@/lib/errors";
 
 interface SessionChatProps {
   sessionId: string;
@@ -20,6 +21,11 @@ export function SessionChat({ sessionId }: SessionChatProps) {
     ChatDisplayMessage[]
   >([]);
   const [isWaitingForFirstToken, setIsWaitingForFirstToken] = useState(false);
+  const [showSessionError, setShowSessionError] = useState(true);
+  const [showThinkingMapError, setShowThinkingMapError] = useState(true);
+  const [isSessionTakingLonger, setIsSessionTakingLonger] = useState(false);
+  const [isThinkingMapTakingLonger, setIsThinkingMapTakingLonger] =
+    useState(false);
 
   const generateThinkingMap = trpc.session.generateThinkingMap.useMutation({
     onSuccess: () => {
@@ -30,6 +36,32 @@ export function SessionChat({ sessionId }: SessionChatProps) {
   useEffect(() => {
     setOptimisticMessages(sessionQuery.data?.messages ?? []);
   }, [sessionQuery.data?.messages]);
+
+  useEffect(() => {
+    if (!sessionQuery.isLoading && !sessionQuery.isFetching) {
+      setIsSessionTakingLonger(false);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setIsSessionTakingLonger(true);
+    }, 15_000);
+
+    return () => window.clearTimeout(timeout);
+  }, [sessionQuery.isFetching, sessionQuery.isLoading]);
+
+  useEffect(() => {
+    if (!generateThinkingMap.isPending) {
+      setIsThinkingMapTakingLonger(false);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setIsThinkingMapTakingLonger(true);
+    }, 15_000);
+
+    return () => window.clearTimeout(timeout);
+  }, [generateThinkingMap.isPending]);
 
   const thinkingMap = useMemo(() => {
     const raw = sessionQuery.data?.thinkingMap;
@@ -80,6 +112,7 @@ export function SessionChat({ sessionId }: SessionChatProps) {
   };
 
   const handleEndSession = () => {
+    setShowThinkingMapError(true);
     generateThinkingMap.mutate({ id: sessionId });
   };
 
@@ -89,13 +122,13 @@ export function SessionChat({ sessionId }: SessionChatProps) {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent sm:tracking-[0.3em]">Live chat</p>
-            <h2 className="mt-3 text-xl font-semibold text-white sm:text-2xl">Ask questions, get Socratic guidance.</h2>
+            <h2 className="mt-3 text-xl font-semibold text-foreground sm:text-2xl">Ask questions, get Socratic guidance.</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
               The assistant responds with one guiding question that targets your current reasoning.
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-surface-elevated px-4 py-3 text-sm text-zinc-200 sm:max-w-xs sm:rounded-3xl">
-            <p className="font-semibold text-white">Topic</p>
+          <div className="rounded-2xl border border-border bg-surface-elevated px-4 py-3 text-sm text-foreground sm:max-w-xs sm:rounded-3xl">
+            <p className="font-semibold text-foreground">Topic</p>
             <p className="break-words">{sessionQuery.data?.topic ?? "Loading..."}</p>
           </div>
         </div>
@@ -109,8 +142,19 @@ export function SessionChat({ sessionId }: SessionChatProps) {
               <div className="ml-auto h-16 w-3/4 animate-pulse rounded-2xl bg-accent/20" />
               <div className="h-20 w-5/6 animate-pulse rounded-2xl bg-surface-elevated" />
             </div>
-          ) : sessionQuery.isError ? (
-            <p className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">Unable to load session. Please refresh.</p>
+          ) : sessionQuery.isError && showSessionError ? (
+            <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p>Unable to load session. Please refresh.</p>
+                <button
+                  type="button"
+                  onClick={() => setShowSessionError(false)}
+                  className="rounded-full bg-red-500/15 px-3 py-1.5 text-xs font-semibold transition hover:bg-red-500/25 active:scale-95"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
           ) : (
             <ChatMessageList
               messages={messages}
@@ -132,9 +176,15 @@ export function SessionChat({ sessionId }: SessionChatProps) {
           </p>
         </div>
 
+        {isSessionTakingLonger || isThinkingMapTakingLonger ? (
+          <p className="rounded-2xl border border-border bg-surface-elevated px-4 py-3 text-sm text-muted">
+            This is taking longer than usual...
+          </p>
+        ) : null}
+
         <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between sm:rounded-[2rem] sm:p-6">
           <div>
-            <h3 className="text-base font-semibold text-white">Session wrap-up</h3>
+            <h3 className="text-base font-semibold text-foreground">Session wrap-up</h3>
             <p className="mt-1 text-sm text-muted">
               Generate a Thinking Map from this conversation.
             </p>
@@ -143,16 +193,33 @@ export function SessionChat({ sessionId }: SessionChatProps) {
             type="button"
             onClick={handleEndSession}
             disabled={generateThinkingMap.isPending || messages.length === 0}
-            className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white px-5 py-3 text-sm font-semibold text-background transition hover:bg-zinc-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-full border border-border bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {generateThinkingMap.isPending ? "Generating..." : "End Session"}
           </button>
         </div>
 
-        {generateThinkingMap.error ? (
-          <p className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-            {generateThinkingMap.error.message || "Unable to generate Thinking Map."}
-          </p>
+        {generateThinkingMap.error && showThinkingMapError ? (
+          <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p>
+                {toFriendlyErrorMessage(
+                  generateThinkingMap.error,
+                  "Unable to generate Thinking Map. Please try again.",
+                )}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowThinkingMapError(false);
+                  generateThinkingMap.reset();
+                }}
+                className="rounded-full bg-red-500/15 px-3 py-1.5 text-xs font-semibold transition hover:bg-red-500/25 active:scale-95"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
         ) : null}
 
         {thinkingMap ? <ThinkingMap data={thinkingMap} /> : null}

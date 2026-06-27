@@ -30,10 +30,12 @@ export default async function DashboardPage() {
               <img
                 src={imageUrl}
                 alt={`${firstName}'s profile`}
-                className="h-16 w-16 shrink-0 rounded-full border border-white/10 object-cover ring-2 ring-accent/40 ring-offset-4 ring-offset-surface sm:h-20 sm:w-20"
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                className="h-16 w-16 shrink-0 rounded-full border border-border object-cover ring-2 ring-accent/40 ring-offset-4 ring-offset-surface sm:h-20 sm:w-20"
               />
             ) : (
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-white/10 bg-surface-elevated text-xl font-semibold text-white ring-2 ring-accent/40 ring-offset-4 ring-offset-surface sm:h-20 sm:w-20">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-border bg-surface-elevated text-xl font-semibold text-foreground ring-2 ring-accent/40 ring-offset-4 ring-offset-surface sm:h-20 sm:w-20">
                 {firstName.slice(0, 1).toUpperCase()}
               </div>
             )}
@@ -41,7 +43,7 @@ export default async function DashboardPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">
                 Dashboard
               </p>
-              <h1 className="mt-3 truncate text-2xl font-semibold text-white sm:text-4xl">
+              <h1 className="mt-3 truncate text-2xl font-semibold text-foreground sm:text-4xl">
                 Welcome back, {firstName}
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted sm:text-base">
@@ -52,7 +54,7 @@ export default async function DashboardPage() {
 
           <div className="flex flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
             <div className="rounded-2xl border border-border bg-surface-elevated px-5 py-4">
-              <p className="text-3xl font-semibold text-white">{sessions.length}</p>
+              <p className="text-3xl font-semibold text-foreground">{sessions.length}</p>
               <p className="mt-1 text-sm text-muted">Total sessions</p>
             </div>
             <Link
@@ -67,8 +69,8 @@ export default async function DashboardPage() {
 
       <section className="grid gap-6">
         {sessions.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/15 bg-surface/70 p-8 text-center shadow-soft sm:rounded-[2rem] sm:p-10">
-            <p className="text-lg font-medium text-white">No sessions yet.</p>
+          <div className="rounded-2xl border border-dashed border-border bg-surface/70 p-8 text-center shadow-soft sm:rounded-[2rem] sm:p-10">
+            <p className="text-lg font-medium text-foreground">No sessions yet.</p>
             <p className="mt-2 text-sm leading-6 text-muted">
               Create a session and start learning through smart questions.
             </p>
@@ -84,16 +86,16 @@ export default async function DashboardPage() {
             {sessions.map((s) => (
               <article
                 key={s.id}
-                className="group overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-soft transition duration-200 hover:scale-[1.02] hover:border-white/20 sm:p-6"
+                className="group overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-soft transition duration-200 hover:scale-[1.02] hover:border-accent/30 sm:p-6"
               >
                 <Link
                   href={`/session/${s.id}`}
-                  className="line-clamp-2 text-lg font-semibold text-white transition group-hover:text-indigo-200"
+                  className="line-clamp-2 text-lg font-semibold text-foreground transition group-hover:text-accent"
                 >
                   {s.title}
                 </Link>
                 <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted">{s.topic}</p>
-                <div className="mt-6 flex items-center justify-between gap-3 text-xs text-zinc-500">
+                <div className="mt-6 flex items-center justify-between gap-3 text-xs text-muted">
                   <span>{s._count.messages} messages</span>
                   <span>
                     {new Date(s.updatedAt).toLocaleDateString(undefined, {

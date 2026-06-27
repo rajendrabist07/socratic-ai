@@ -23,6 +23,12 @@ export interface SocraticResponse {
   followUpHints: string[]; // Optional nudges if the student is stuck.
 }
 
+type GroqErrorContext = {
+  operation: string;
+  userId?: string;
+  sessionId?: string;
+};
+
 const SOCRATIC_SYSTEM_PROMPTS: Record<ChatMode, string> = {
   ask: `
 You are SocraticAI, a strict Socratic tutor.
@@ -87,23 +93,16 @@ export async function askSocratic(
       response_format: { type: "json_object" },
     });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Groq request failed with an unknown error.";
-
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: `Groq request failed: ${message}. Please verify your GROQ_API_KEY and model configuration.`,
-    });
+    throwFriendlyGroqError(error, { operation: "askSocratic" });
   }
 
   const raw = completion.choices[0]?.message?.content;
 
   if (!raw) {
+    console.error("Groq returned an empty response", { operation: "askSocratic" });
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: "Groq returned an empty response. Please try again or check your model prompt.",
+      message: "AI service temporarily unavailable. Please try again.",
     });
   }
 
@@ -111,17 +110,22 @@ export async function askSocratic(
 
   try {
     parsed = JSON.parse(raw) as Partial<SocraticResponse>;
-  } catch (error) {
+  } catch {
+    console.error("Failed to parse Groq JSON response", { operation: "askSocratic" });
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: "Failed to parse Groq response. The AI response is not valid JSON.",
+      message: "AI service temporarily unavailable. Please try again.",
     });
   }
 
   if (!parsed.question || typeof parsed.question !== "string") {
+    console.error("Invalid Groq response shape", {
+      operation: "askSocratic",
+      hasQuestion: typeof parsed.question,
+    });
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: "Invalid Groq response shape: missing 'question' field.",
+      message: "AI service temporarily unavailable. Please try again.",
     });
   }
 
@@ -148,4 +152,53 @@ function enforceSingleQuestion(value: string): string {
   const capped = words.length > 80 ? `${words.slice(0, 80).join(" ")}?` : question;
 
   return capped.endsWith("?") ? capped : `${capped}?`;
+}
+
+export function throwFriendlyGroqError(
+  error: unknown,
+  context: GroqErrorContext,
+): never {
+  const status = getErrorStatus(error);
+
+  console.error("Groq request failed", {
+    ...context,
+    status,
+    message: error instanceof Error ? error.message : "Unknown error",
+  });
+
+  if (status === 401) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "AI service configuration error. Please contact support.",
+    });
+  }
+
+  if (status === 429) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: "Too many requests. Please wait a few seconds and try again.",
+    });
+  }
+
+  if (status === 400) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "AI service temporarily unavailable. Please try again.",
+    });
+  }
+
+  throw new TRPCError({
+    code: "INTERNAL_SERVER_ERROR",
+    message: "AI service temporarily unavailable. Please try again.",
+  });
+}
+
+function getErrorStatus(error: unknown): number | null {
+  if (error && typeof error === "object" && "status" in error) {
+    const status = (error as { status: unknown }).status;
+
+    return typeof status === "number" ? status : null;
+  }
+
+  return null;
 }

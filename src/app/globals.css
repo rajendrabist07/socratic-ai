@@ -4,11 +4,31 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light;
+    --color-background: #f7f7fb;
+    --color-foreground: #111114;
+    --color-surface: #ffffff;
+    --color-surface-elevated: #f1f2f8;
+    --color-border: rgba(15, 23, 42, 0.1);
+    --color-muted: #63636f;
+    --shadow-soft: 0 18px 60px rgba(15, 23, 42, 0.1);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --color-background: #0a0a0b;
+      --color-foreground: #f4f4f5;
+      --color-surface: #111114;
+      --color-surface-elevated: #17171c;
+      --color-border: rgba(255, 255, 255, 0.1);
+      --color-muted: #a1a1aa;
+      --shadow-soft: 0 18px 60px rgba(0, 0, 0, 0.28);
+    }
   }
 
   html {
-    background: #0a0a0b;
+    background: var(--color-background);
   }
 
   body {

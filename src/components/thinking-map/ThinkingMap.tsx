@@ -40,7 +40,7 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
     <section className="w-full space-y-4 rounded-2xl border border-border bg-surface p-4 shadow-soft sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-base font-semibold text-white">
+          <h2 className="text-base font-semibold text-foreground">
             Thinking Map
           </h2>
           <p className="mt-1 text-sm text-muted">
@@ -51,7 +51,7 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
         <button
           type="button"
           onClick={handleShare}
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-border bg-surface-elevated px-3 text-sm font-medium text-white transition hover:border-white/20 hover:bg-zinc-800 active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent/50"
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-border bg-surface-elevated px-3 text-sm font-medium text-foreground transition hover:border-accent/30 hover:bg-surface active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent/50"
         >
           <span aria-hidden="true">URL</span>
           {shareState === "copied"
@@ -82,7 +82,7 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
                 y1="10"
                 x2="6"
                 y2="90"
-                className="stroke-white/15"
+                className="stroke-muted/30"
                 strokeWidth="0.7"
               />
               <line
@@ -90,7 +90,7 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
                 y1="90"
                 x2="94"
                 y2="90"
-                className="stroke-white/15"
+                className="stroke-muted/30"
                 strokeWidth="0.7"
               />
               {[25, 50, 75].map((score) => {
@@ -103,7 +103,7 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
                     y1={y}
                     x2="94"
                     y2={y}
-                    className="stroke-white/10"
+                    className="stroke-muted/20"
                     strokeWidth="0.5"
                     strokeDasharray="2 2"
                   />
@@ -136,7 +136,7 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
             </svg>
           </div>
         ) : (
-          <div className="flex h-36 items-center justify-center rounded-2xl border border-dashed border-white/15 text-sm text-muted">
+          <div className="flex h-36 items-center justify-center rounded-2xl border border-dashed border-border text-sm text-muted">
             No comprehension scores yet
           </div>
         )}
@@ -149,7 +149,7 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
         <div className="rounded-2xl border border-border bg-background/50 p-4">
-          <h3 className="text-sm font-semibold text-white">
+          <h3 className="text-sm font-semibold text-foreground">
             Misconceptions
           </h3>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -187,7 +187,7 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
       </div>
 
       <div className="rounded-2xl border border-border bg-background/50 p-4">
-        <h3 className="text-sm font-semibold text-white">Summary</h3>
+        <h3 className="text-sm font-semibold text-foreground">Summary</h3>
         <p className="mt-2 text-sm leading-6 text-muted">{data.summary}</p>
       </div>
     </section>

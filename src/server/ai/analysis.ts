@@ -1,6 +1,6 @@
 import type { Message, Session } from "@prisma/client";
 import { env } from "@/env";
-import { groq } from "@/server/ai/groq-client";
+import { groq, throwFriendlyGroqError } from "@/server/ai/groq-client";
 
 const ANALYSIS_TIMEOUT_MS = 10_000;
 const SDK_TIMEOUT_BUFFER_MS = 1_000;
@@ -43,16 +43,19 @@ export async function scoreComprehension(
 ): Promise<ComprehensionScore> {
   const fallback = buildFallbackComprehensionScore(userMessage);
 
-  const completion = await withAnalysisTimeout(
-    "Comprehension scoring",
-    (signal) =>
-      groq.chat.completions.create(
-        {
-          model: env.GROQ_MODEL,
-          messages: [
-            {
-              role: "system",
-              content: `
+  let completion: Awaited<ReturnType<typeof groq.chat.completions.create>>;
+
+  try {
+    completion = await withAnalysisTimeout(
+      "Comprehension scoring",
+      (signal) =>
+        groq.chat.completions.create(
+          {
+            model: env.GROQ_MODEL,
+            messages: [
+              {
+                role: "system",
+                content: `
 You score student comprehension for SocraticAI.
 Return only valid JSON with this shape:
 {
@@ -70,10 +73,10 @@ Scoring rules:
 misconceptionTag must be a short phrase such as "confuses correlation with causation", or null when no clear misconception is detected.
 Do not include explanation, markdown, or extra keys.
 `.trim(),
-            },
-            {
-              role: "user",
-              content: `
+              },
+              {
+                role: "user",
+                content: `
 Topic: ${topic}
 
 Conversation history:
@@ -82,19 +85,22 @@ ${conversationHistory || "No prior conversation."}
 Student message to score:
 ${userMessage}
 `.trim(),
-            },
-          ],
-          temperature: 0,
-          max_tokens: 120,
-          response_format: { type: "json_object" },
-        },
-        {
-          timeout: ANALYSIS_TIMEOUT_MS + SDK_TIMEOUT_BUFFER_MS,
-          maxRetries: 0,
-          signal,
-        },
-      ),
-  );
+              },
+            ],
+            temperature: 0,
+            max_tokens: 120,
+            response_format: { type: "json_object" },
+          },
+          {
+            timeout: ANALYSIS_TIMEOUT_MS + SDK_TIMEOUT_BUFFER_MS,
+            maxRetries: 0,
+            signal,
+          },
+        ),
+    );
+  } catch (error) {
+    throwFriendlyGroqError(error, { operation: "scoreComprehension" });
+  }
 
   const raw = completion.choices[0]?.message?.content;
   const parsed = parseJsonObject(raw);
@@ -122,14 +128,17 @@ export async function generateThinkingMap(
   );
   const fallback = buildFallbackThinkingMap(session, orderedMessages);
 
-  const completion = await withAnalysisTimeout("Thinking Map generation", (signal) =>
-    groq.chat.completions.create(
-      {
-        model: env.GROQ_MODEL,
-        messages: [
-          {
-            role: "system",
-            content: `
+  let completion: Awaited<ReturnType<typeof groq.chat.completions.create>>;
+
+  try {
+    completion = await withAnalysisTimeout("Thinking Map generation", (signal) =>
+      groq.chat.completions.create(
+        {
+          model: env.GROQ_MODEL,
+          messages: [
+            {
+              role: "system",
+              content: `
 You generate SocraticAI Thinking Map data from a tutoring session.
 Return only valid JSON with exactly this shape:
 {
@@ -146,23 +155,29 @@ Rules:
 - keyInsight must identify the main conceptual shift.
 - Do not include markdown, explanations, or extra keys.
 `.trim(),
-          },
-          {
-            role: "user",
-            content: buildThinkingMapContext(session, orderedMessages),
-          },
-        ],
-        temperature: 0.2,
-        max_tokens: 600,
-        response_format: { type: "json_object" },
-      },
-      {
-        timeout: ANALYSIS_TIMEOUT_MS + SDK_TIMEOUT_BUFFER_MS,
-        maxRetries: 0,
-        signal,
-      },
-    ),
-  );
+            },
+            {
+              role: "user",
+              content: buildThinkingMapContext(session, orderedMessages),
+            },
+          ],
+          temperature: 0.2,
+          max_tokens: 600,
+          response_format: { type: "json_object" },
+        },
+        {
+          timeout: ANALYSIS_TIMEOUT_MS + SDK_TIMEOUT_BUFFER_MS,
+          maxRetries: 0,
+          signal,
+        },
+      ),
+    );
+  } catch (error) {
+    throwFriendlyGroqError(error, {
+      operation: "generateThinkingMap",
+      sessionId: session.id,
+    });
+  }
 
   const raw = completion.choices[0]?.message?.content;
   const parsed = parseJsonObject(raw);

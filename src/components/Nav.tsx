@@ -10,9 +10,9 @@ export default function Nav() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
         <Link
           href="/"
-          className="flex min-w-0 items-center gap-3 rounded-full pr-3 text-base font-semibold text-white transition hover:text-zinc-200 active:scale-95"
+          className="flex min-w-0 items-center gap-3 rounded-full pr-3 text-base font-semibold text-foreground transition hover:text-accent active:scale-95"
         >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-surface-elevated shadow-soft">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface-elevated shadow-soft">
             <Image
               src="/socraticai-logo.svg"
               alt="SocraticAI logo"
@@ -31,7 +31,7 @@ export default function Nav() {
               appearance={{
                 elements: {
                   avatarBox:
-                    "w-9 h-9 rounded-full ring-2 ring-offset-2 ring-offset-background",
+                    "w-9 h-9 rounded-full ring-2 ring-offset-2 ring-offset-background ring-indigo-500/60",
                 },
               }}
             />

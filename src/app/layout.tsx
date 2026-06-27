@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import ClerkProviderClient from "@/lib/ClerkProviderClient";
 import { TRPCProvider } from "@/lib/providers";
 import Nav from "@/components/Nav";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import "./globals.css";
 
 const geist = Geist({
@@ -33,14 +34,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${geist.className} min-h-screen bg-background text-zinc-100 antialiased`}>
+      <body className={`${geist.className} min-h-screen bg-background text-foreground antialiased`}>
         <ClerkProviderClient>
-          <div className="min-h-screen">
-            <Nav />
-            <main className="mx-auto w-full max-w-6xl animate-page-in px-4 py-5 sm:px-6 sm:py-8">
-              <TRPCProvider>{children}</TRPCProvider>
-            </main>
-          </div>
+          <ErrorBoundary>
+            <div className="min-h-screen">
+              <Nav />
+              <main className="mx-auto w-full max-w-6xl animate-page-in px-4 py-5 sm:px-6 sm:py-8">
+                <TRPCProvider>{children}</TRPCProvider>
+              </main>
+            </div>
+          </ErrorBoundary>
         </ClerkProviderClient>
       </body>
     </html>
