@@ -17,11 +17,11 @@ export default function NewSessionPage() {
 
   return (
     <main className="flex min-h-[calc(100vh-6rem)] items-center justify-center py-10">
-      <div className="w-full max-w-2xl rounded-[2rem] border border-slate-200 bg-white p-10 shadow-xl shadow-slate-900/5">
+      <div className="w-full max-w-2xl rounded-2xl border border-border bg-surface p-6 shadow-soft sm:rounded-[2rem] sm:p-10">
         <div className="mb-8">
-          <p className="text-sm uppercase tracking-[0.3em] text-indigo-600">New session</p>
-          <h1 className="mt-4 text-3xl font-semibold text-slate-950">Start a fresh Socratic conversation</h1>
-          <p className="mt-3 text-slate-600">Give your session a title, choose a topic, and begin exploring with questions.</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-accent">New session</p>
+          <h1 className="mt-4 text-3xl font-semibold text-white">Start a fresh Socratic conversation</h1>
+          <p className="mt-3 text-sm leading-6 text-muted">Give your session a title, choose a topic, and begin exploring with questions.</p>
         </div>
 
         <form
@@ -32,24 +32,24 @@ export default function NewSessionPage() {
           className="space-y-6"
         >
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Session title</label>
+            <label className="mb-2 block text-sm font-medium text-zinc-200">Session title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              className="w-full rounded-3xl border border-border bg-background/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
               placeholder="E.g. Philosophy study session"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Topic</label>
+            <label className="mb-2 block text-sm font-medium text-zinc-200">Topic</label>
             <input
               type="text"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              className="w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              className="w-full rounded-3xl border border-border bg-background/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
               placeholder="E.g. Critical thinking, science, literature"
               required
             />
@@ -58,12 +58,12 @@ export default function NewSessionPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="submit"
-              className="inline-flex items-center justify-center rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/10 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              className="inline-flex items-center justify-center rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white shadow-glow transition hover:bg-indigo-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={create.isPending}
             >
               {create.isPending ? "Creating…" : "Create Session"}
             </button>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm leading-6 text-muted">
               Keep the title short and descriptive so you can find this session later.
             </p>
           </div>

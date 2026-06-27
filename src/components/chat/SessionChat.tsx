@@ -85,28 +85,32 @@ export function SessionChat({ sessionId }: SessionChatProps) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-900/5 sm:rounded-[2rem] sm:p-6">
+      <div className="rounded-2xl border border-border bg-surface p-4 shadow-soft sm:rounded-[2rem] sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <p className="text-sm uppercase tracking-[0.2em] text-indigo-600 sm:tracking-[0.3em]">Live chat</p>
-            <h2 className="mt-3 text-xl font-semibold text-slate-950 sm:text-2xl">Ask questions, get Socratic guidance.</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent sm:tracking-[0.3em]">Live chat</p>
+            <h2 className="mt-3 text-xl font-semibold text-white sm:text-2xl">Ask questions, get Socratic guidance.</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
               The assistant responds with one guiding question that targets your current reasoning.
             </p>
           </div>
-          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700 sm:rounded-3xl">
-            <p className="font-semibold">Topic</p>
+          <div className="rounded-2xl border border-border bg-surface-elevated px-4 py-3 text-sm text-zinc-200 sm:max-w-xs sm:rounded-3xl">
+            <p className="font-semibold text-white">Topic</p>
             <p className="break-words">{sessionQuery.data?.topic ?? "Loading..."}</p>
           </div>
         </div>
       </div>
 
       <div className="space-y-4">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:rounded-[2rem] sm:p-6">
+        <div className="min-h-[320px] rounded-2xl border border-border bg-background/70 p-3 shadow-inner shadow-black/20 sm:rounded-[2rem] sm:p-6">
           {sessionQuery.isLoading ? (
-            <p className="text-sm text-slate-500">Loading session chat...</p>
+            <div className="space-y-4">
+              <div className="h-16 w-4/5 animate-pulse rounded-2xl bg-surface-elevated" />
+              <div className="ml-auto h-16 w-3/4 animate-pulse rounded-2xl bg-accent/20" />
+              <div className="h-20 w-5/6 animate-pulse rounded-2xl bg-surface-elevated" />
+            </div>
           ) : sessionQuery.isError ? (
-            <p className="text-sm text-red-600">Unable to load session. Please refresh.</p>
+            <p className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">Unable to load session. Please refresh.</p>
           ) : (
             <ChatMessageList
               messages={messages}
@@ -115,7 +119,7 @@ export function SessionChat({ sessionId }: SessionChatProps) {
           )}
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-900/5 sm:rounded-[2rem] sm:p-6">
+        <div className="rounded-2xl border border-border bg-surface p-4 shadow-soft sm:rounded-[2rem] sm:p-6">
           <ChatInput
             sessionId={sessionId}
             onUserMessage={handleUserMessage}
@@ -123,15 +127,15 @@ export function SessionChat({ sessionId }: SessionChatProps) {
             onAssistantToken={handleAssistantToken}
             onMessageSent={handleRefresh}
           />
-          <p className="mt-3 text-xs text-slate-500">
+          <p className="mt-3 text-xs text-muted">
             Each response is intentionally limited to one guiding question.
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-900/5 sm:flex-row sm:items-center sm:justify-between sm:rounded-[2rem] sm:p-6">
+        <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between sm:rounded-[2rem] sm:p-6">
           <div>
-            <h3 className="text-base font-semibold text-slate-950">Session wrap-up</h3>
-            <p className="mt-1 text-sm text-slate-500">
+            <h3 className="text-base font-semibold text-white">Session wrap-up</h3>
+            <p className="mt-1 text-sm text-muted">
               Generate a Thinking Map from this conversation.
             </p>
           </div>
@@ -139,14 +143,14 @@ export function SessionChat({ sessionId }: SessionChatProps) {
             type="button"
             onClick={handleEndSession}
             disabled={generateThinkingMap.isPending || messages.length === 0}
-            className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white px-5 py-3 text-sm font-semibold text-background transition hover:bg-zinc-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {generateThinkingMap.isPending ? "Generating..." : "End Session"}
           </button>
         </div>
 
         {generateThinkingMap.error ? (
-          <p className="text-sm text-red-600">
+          <p className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {generateThinkingMap.error.message || "Unable to generate Thinking Map."}
           </p>
         ) : null}

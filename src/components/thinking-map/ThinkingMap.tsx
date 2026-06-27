@@ -37,13 +37,13 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
   }
 
   return (
-    <section className="w-full space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+    <section className="w-full space-y-4 rounded-2xl border border-border bg-surface p-4 shadow-soft sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-base font-semibold text-slate-950">
+          <h2 className="text-base font-semibold text-white">
             Thinking Map
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-muted">
             Comprehension path across the session
           </p>
         </div>
@@ -51,7 +51,7 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
         <button
           type="button"
           onClick={handleShare}
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-border bg-surface-elevated px-3 text-sm font-medium text-white transition hover:border-white/20 hover:bg-zinc-800 active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent/50"
         >
           <span aria-hidden="true">URL</span>
           {shareState === "copied"
@@ -62,8 +62,8 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
         </button>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 sm:p-4">
-        <div className="mb-3 flex items-center justify-between text-xs font-medium text-slate-500">
+      <div className="rounded-2xl border border-border bg-background/70 p-3 sm:p-4">
+        <div className="mb-3 flex items-center justify-between text-xs font-medium text-muted">
           <span>Score timeline</span>
           <span>0-100</span>
         </div>
@@ -82,7 +82,7 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
                 y1="10"
                 x2="6"
                 y2="90"
-                className="stroke-slate-300"
+                className="stroke-white/15"
                 strokeWidth="0.7"
               />
               <line
@@ -90,7 +90,7 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
                 y1="90"
                 x2="94"
                 y2="90"
-                className="stroke-slate-300"
+                className="stroke-white/15"
                 strokeWidth="0.7"
               />
               {[25, 50, 75].map((score) => {
@@ -103,7 +103,7 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
                     y1={y}
                     x2="94"
                     y2={y}
-                    className="stroke-slate-200"
+                    className="stroke-white/10"
                     strokeWidth="0.5"
                     strokeDasharray="2 2"
                   />
@@ -113,7 +113,7 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
                 <polyline
                   points={polylinePoints}
                   fill="none"
-                  className="stroke-slate-700"
+                  className="stroke-accent"
                   strokeWidth="1.6"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -126,7 +126,7 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
                   cx={point.x}
                   cy={point.y}
                   r="2.6"
-                  className="fill-white stroke-slate-700"
+                  className="fill-background stroke-accent"
                   strokeWidth="1.3"
                   vectorEffect="non-scaling-stroke"
                 >
@@ -136,20 +136,20 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
             </svg>
           </div>
         ) : (
-          <div className="flex h-36 items-center justify-center rounded-md border border-dashed border-slate-300 text-sm text-slate-500">
+          <div className="flex h-36 items-center justify-center rounded-2xl border border-dashed border-white/15 text-sm text-muted">
             No comprehension scores yet
           </div>
         )}
 
-        <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-          <span className="h-2.5 w-2.5 rounded-full border border-slate-700 bg-white" />
+        <div className="mt-3 flex items-center gap-2 text-xs text-muted">
+          <span className="h-2.5 w-2.5 rounded-full border border-accent bg-background" />
           Student message score
         </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
-        <div className="rounded-lg border border-slate-200 p-4">
-          <h3 className="text-sm font-semibold text-slate-900">
+        <div className="rounded-2xl border border-border bg-background/50 p-4">
+          <h3 className="text-sm font-semibold text-white">
             Misconceptions
           </h3>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -157,11 +157,11 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
               data.misconceptions.map((misconception) => (
                 <span
                   key={misconception}
-                  className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900"
+                  className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-medium text-amber-100"
                 >
                   <span
                     aria-hidden="true"
-                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-200 text-[10px] font-bold text-amber-900"
+                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-300/20 text-[10px] font-bold text-amber-100"
                   >
                     !
                   </span>
@@ -169,26 +169,26 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
                 </span>
               ))
             ) : (
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-muted">
                 No clear misconceptions detected
               </span>
             )}
           </div>
         </div>
 
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-          <h3 className="text-sm font-semibold text-emerald-950">
+        <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-4">
+          <h3 className="text-sm font-semibold text-emerald-100">
             Key Insight
           </h3>
-          <p className="mt-2 text-sm leading-6 text-emerald-950">
+          <p className="mt-2 text-sm leading-6 text-emerald-50/90">
             {data.keyInsight}
           </p>
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-200 p-4">
-        <h3 className="text-sm font-semibold text-slate-900">Summary</h3>
-        <p className="mt-2 text-sm leading-6 text-slate-600">{data.summary}</p>
+      <div className="rounded-2xl border border-border bg-background/50 p-4">
+        <h3 className="text-sm font-semibold text-white">Summary</h3>
+        <p className="mt-2 text-sm leading-6 text-muted">{data.summary}</p>
       </div>
     </section>
   );
