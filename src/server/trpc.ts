@@ -1,24 +1,14 @@
 import { auth } from "@clerk/nextjs/server";
 import { initTRPC, TRPCError } from "@trpc/server";
-import { type NextRequest } from "next/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
-import { db } from "@/server/db/client";
+import { db } from "./db/client";
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
-interface CreateContextOptions {
-  req: NextRequest;
-}
-
-export const createTRPCContext = async ({ req }: CreateContextOptions) => {
+export const createTRPCContext = async (opts: { headers: Headers }) => {
   const { userId } = await auth();
-
-  return {
-    db,
-    clerkUserId: userId,
-    req,
-  };
+  return { userId, db, headers: opts.headers };
 };
 
 export type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;
@@ -43,11 +33,11 @@ const t = initTRPC.context<TRPCContext>().create({
 
 // ─── Reusable middleware ──────────────────────────────────────────────────────
 
-const enforceAuth = t.middleware(({ ctx, next }) => {
-  if (!ctx.clerkUserId) {
+const enforceAuth = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.userId) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
-  return next({ ctx: { ...ctx, clerkUserId: ctx.clerkUserId } });
+  return next({ ctx: { ...ctx, userId: ctx.userId } });
 });
 
 // ─── Exports ──────────────────────────────────────────────────────────────────

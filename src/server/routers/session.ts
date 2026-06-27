@@ -8,7 +8,7 @@ export const sessionRouter = createTRPCRouter({
   // List all sessions for the current user
   list: protectedProcedure.query(async ({ ctx }) => {
     const user = await ctx.db.user.findUnique({
-      where: { clerkId: ctx.clerkUserId },
+      where: { clerkId: ctx.userId },
     });
 
     if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
@@ -25,7 +25,7 @@ export const sessionRouter = createTRPCRouter({
     .input(z.object({ id: z.string().min(1) })) // MongoDB ObjectId
     .query(async ({ ctx, input }) => {
       const user = await ctx.db.user.findUnique({
-        where: { clerkId: ctx.clerkUserId },
+        where: { clerkId: ctx.userId },
       });
       if (!user) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -49,11 +49,11 @@ export const sessionRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       // Upsert so first session also creates the User row
       const user = await ctx.db.user.upsert({
-        where: { clerkId: ctx.clerkUserId },
+        where: { clerkId: ctx.userId },
         update: {},
         create: {
-          clerkId: ctx.clerkUserId,
-          email: `${ctx.clerkUserId}@placeholder.clerk`, // replaced by webhook
+          clerkId: ctx.userId,
+          email: `${ctx.userId}@placeholder.clerk`, // replaced by webhook
         },
       });
 
@@ -71,7 +71,7 @@ export const sessionRouter = createTRPCRouter({
     .input(z.object({ id: z.string().min(1) })) // MongoDB ObjectId
     .mutation(async ({ ctx, input }) => {
       const user = await ctx.db.user.findUnique({
-        where: { clerkId: ctx.clerkUserId },
+        where: { clerkId: ctx.userId },
       });
       if (!user) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -85,7 +85,7 @@ export const sessionRouter = createTRPCRouter({
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const user = await ctx.db.user.findUnique({
-        where: { clerkId: ctx.clerkUserId },
+        where: { clerkId: ctx.userId },
       });
       if (!user) throw new TRPCError({ code: "NOT_FOUND" });
 

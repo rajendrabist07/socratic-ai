@@ -15,7 +15,7 @@ export const chatRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       // 1. Verify session belongs to this user
       const user = await ctx.db.user.findUnique({
-        where: { clerkId: ctx.clerkUserId },
+        where: { clerkId: ctx.userId },
       });
       if (!user) throw new TRPCError({ code: "NOT_FOUND" });
 

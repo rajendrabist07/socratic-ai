@@ -20,7 +20,7 @@ type StreamChunk = {
 };
 
 type ProtectedContext = TRPCContext & {
-  clerkUserId: string;
+  userId: string;
 };
 
 export const messageRouter = createTRPCRouter({
@@ -126,7 +126,7 @@ export const messageRouter = createTRPCRouter({
 
 async function getOwnedSession(ctx: ProtectedContext, sessionId: string) {
   const user = await ctx.db.user.findUnique({
-    where: { clerkId: ctx.clerkUserId },
+    where: { clerkId: ctx.userId },
   });
 
   if (!user) {
