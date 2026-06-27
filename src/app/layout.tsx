@@ -11,14 +11,36 @@ const geist = Geist({
   variable: "--font-geist",
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://socraticai.ai";
+
 export const metadata: Metadata = {
-  title: "SocraticAI — Learn Through Questions",
+  metadataBase: new URL(siteUrl),
+  title: "SocraticAI — Learn by Thinking, Not Copying",
   description:
-    "An AI-powered Socratic tutor that guides you to understanding without giving direct answers.",
+    "An AI tutor that never gives you the answer — it asks the right question so you discover it yourself. Built for students who want to actually understand, not just complete.",
+  keywords: [
+    "AI tutor",
+    "socratic method",
+    "learning assistant",
+    "AI study tool",
+    "critical thinking",
+  ],
+  openGraph: {
+    title: "SocraticAI",
+    description: "Learn by thinking, not copying.",
+    images: ["/og-image.png"],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SocraticAI",
+    description: "Learn by thinking, not copying.",
+  },
   icons: {
     icon: "/favicon.svg",
     apple: "/favicon.svg",
   },
+  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {

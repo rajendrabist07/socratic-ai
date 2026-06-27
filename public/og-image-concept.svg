@@ -1,0 +1,22 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#09090f"/>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="990" cy="120" r="220" fill="#6366f1" opacity="0.16"/>
+  <circle cx="140" cy="520" r="260" fill="#14b8a6" opacity="0.12"/>
+  <g transform="translate(96 96)">
+    <rect x="0" y="0" width="132" height="132" rx="32" fill="#111827" stroke="#2f3140" stroke-width="2"/>
+    <path d="M36 70c22-36 50-36 72 0" stroke="#a5b4fc" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="46" cy="52" r="8" fill="#f8fafc"/>
+    <circle cx="86" cy="52" r="8" fill="#f8fafc"/>
+  </g>
+  <text x="96" y="318" fill="#f8fafc" font-family="Arial, Helvetica, sans-serif" font-size="82" font-weight="700">SocraticAI</text>
+  <text x="100" y="398" fill="#c7d2fe" font-family="Arial, Helvetica, sans-serif" font-size="38" font-weight="600">Learn by thinking, not copying.</text>
+  <text x="100" y="462" fill="#94a3b8" font-family="Arial, Helvetica, sans-serif" font-size="28">An AI tutor that asks better questions.</text>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111827"/>
+      <stop offset="0.48" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#18122b"/>
+    </linearGradient>
+  </defs>
+</svg>

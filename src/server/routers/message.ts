@@ -4,6 +4,7 @@ import { env } from "@/env";
 import { scoreComprehension } from "@/server/ai/analysis";
 import {
   groq,
+  runGroqCall,
   throwFriendlyGroqError,
   trimHistory,
   type ChatMessage,
@@ -14,6 +15,8 @@ import {
 } from "@/server/ai/socratic-prompt";
 import { createTRPCRouter, protectedProcedure } from "@/server/trpc";
 import type { TRPCContext } from "@/server/trpc";
+import { logger } from "@/lib/logger";
+import { chatRateLimit } from "@/lib/rate-limit";
 
 type StreamChunk = {
   choices?: Array<{
@@ -48,6 +51,42 @@ export const messageRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const session = await getOwnedSession(ctx, input.sessionId);
+
+      const { success, remaining } = await chatRateLimit.limit(ctx.userId);
+
+      if (!success) {
+        logger.warn("Rate limit hit", {
+          endpoint: "message.send",
+          userId: ctx.userId,
+          remaining,
+        });
+
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "You're sending messages too fast. Please wait a moment.",
+        });
+      }
+
+      const duplicateMessage = await ctx.db.message.findFirst({
+        where: {
+          sessionId: session.id,
+          role: "USER",
+          content: input.userContent,
+          createdAt: { gte: new Date(Date.now() - 3_000) },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (duplicateMessage) {
+        logger.info("Duplicate user message ignored", {
+          operation: "message.send",
+          userId: ctx.userId,
+          sessionId: session.id,
+          messageId: duplicateMessage.id,
+        });
+
+        return emptyTokenStream();
+      }
 
       const userMessage = await ctx.db.message.create({
         data: {
@@ -92,23 +131,33 @@ export const messageRouter = createTRPCRouter({
         }));
 
       try {
-        const groqStream = await groq.chat.completions.create({
-          model: env.GROQ_MODEL,
-          messages: [
-            {
-              role: "system",
-              content: buildSocraticPrompt(
-                session.topic,
-                promptMessages,
-                avgScore,
-              ),
-            },
-            ...history,
-          ],
-          temperature: 0.7,
-          max_tokens: 100,
-          stream: true,
-        });
+        const groqStream = await runGroqCall(
+          {
+            operation: "message.send.stream.create",
+            model: env.GROQ_MODEL,
+            topic: session.topic,
+            userId: ctx.userId,
+            sessionId: session.id,
+          },
+          () =>
+            groq.chat.completions.create({
+              model: env.GROQ_MODEL,
+              messages: [
+                {
+                  role: "system",
+                  content: buildSocraticPrompt(
+                    session.topic,
+                    promptMessages,
+                    avgScore,
+                  ),
+                },
+                ...history,
+              ],
+              temperature: 0.7,
+              max_tokens: 100,
+              stream: true,
+            }),
+        );
 
         return streamTokensAndSaveAssistantMessage({
           ctx,
@@ -208,6 +257,14 @@ function streamTokensAndSaveAssistantMessage({
   };
 }
 
+function emptyTokenStream(): AsyncIterable<string> {
+  return {
+    async *[Symbol.asyncIterator]() {
+      return;
+    },
+  };
+}
+
 function buildConversationHistory(
   messages: Array<{ role: string; content: string }>,
 ): string {
@@ -231,7 +288,7 @@ async function scoreComprehensionAndSave({
   conversationHistory: string;
 }): Promise<void> {
   try {
-    const { score, misconceptionTag } = await scoreComprehension(
+    const { score, misconceptionTag, reasoning, confidenceLevel } = await scoreComprehension(
       topic,
       userContent,
       conversationHistory,
@@ -239,10 +296,15 @@ async function scoreComprehensionAndSave({
 
     await ctx.db.message.update({
       where: { id: messageId },
-      data: { comprehensionScore: score, misconceptionTag },
+      data: {
+        comprehensionScore: score,
+        misconceptionTag,
+        reasoning,
+        confidenceLevel,
+      },
     });
   } catch (error) {
-    console.error("Comprehension scoring failed", {
+    logger.error("Comprehension scoring failed", {
       operation: "scoreComprehensionAndSave",
       userId: ctx.userId,
       messageId,

@@ -87,6 +87,21 @@ npm run build
 npm run start
 ```
 
+## Debugging in Production
+
+SocraticAI writes structured JSON logs to the server console, so Vercel can
+index them without any paid observability tool.
+
+In Vercel, open your project and go to **Logs**. Useful filters:
+
+- `"level":"error"` — failed tRPC procedures, Groq failures, scoring fallbacks
+- `"level":"warn"` — rate limit hits and disabled local-only safeguards
+- `"message":"Groq request succeeded"` — Groq latency with `durationMs`
+- `"message":"Rate limit hit"` — user and endpoint that hit a quota
+
+The logs intentionally avoid API keys and environment values. Groq calls log
+operation name, model, topic, session/user identifiers, status code, and latency.
+
 ## Project Structure
 
 ```

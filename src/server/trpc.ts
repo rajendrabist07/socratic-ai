@@ -3,6 +3,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 import { db } from "./db/client";
+import { logger } from "@/lib/logger";
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
@@ -18,6 +19,15 @@ export type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;
 const t = initTRPC.context<TRPCContext>().create({
   transformer: superjson,
   errorFormatter({ shape, error }) {
+    logger.error("tRPC error", {
+      code: error.code,
+      message: error.message,
+      path:
+        shape.data && "path" in shape.data && typeof shape.data.path === "string"
+          ? shape.data.path
+          : undefined,
+    });
+
     return {
       ...shape,
       data: {

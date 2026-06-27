@@ -1,15 +1,23 @@
 import type { Message, Session } from "@prisma/client";
 import { env } from "@/env";
-import { groq, throwFriendlyGroqError } from "@/server/ai/groq-client";
+import {
+  groq,
+  runGroqCall,
+  throwFriendlyGroqError,
+  type ChatMessage,
+} from "@/server/ai/groq-client";
+import { logger } from "@/lib/logger";
 
 const ANALYSIS_TIMEOUT_MS = 10_000;
 const SDK_TIMEOUT_BUFFER_MS = 1_000;
 
 export type { Message, Session } from "@prisma/client";
 
-export interface ComprehensionScore {
+export interface ScoringResult {
   score: number;
   misconceptionTag: string | null;
+  reasoning: string;
+  confidenceLevel: "low" | "medium" | "high";
 }
 
 export interface ThinkingMapData {
@@ -34,82 +42,75 @@ export class AnalysisTimeoutError extends Error {
  * @param topic - The session topic being studied.
  * @param userMessage - The student's message to score.
  * @param conversationHistory - Plain-text conversation context.
- * @returns A 0-100 score and an optional misconception tag.
+ * @returns A calibrated 0-100 score, optional misconception tag, reasoning, and confidence.
  */
 export async function scoreComprehension(
   topic: string,
   userMessage: string,
   conversationHistory: string,
-): Promise<ComprehensionScore> {
-  const fallback = buildFallbackComprehensionScore(userMessage);
+): Promise<ScoringResult> {
+  const fallback = buildFallbackComprehensionScore();
+  const messages = buildComprehensionScoringMessages(
+    topic,
+    userMessage,
+    conversationHistory,
+  );
 
-  let completion: Awaited<ReturnType<typeof groq.chat.completions.create>>;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    let completion: Awaited<ReturnType<typeof groq.chat.completions.create>>;
 
-  try {
-    completion = await withAnalysisTimeout(
-      "Comprehension scoring",
-      (signal) =>
-        groq.chat.completions.create(
-          {
-            model: env.GROQ_MODEL,
-            messages: [
-              {
-                role: "system",
-                content: `
-You score student comprehension for SocraticAI.
-Return only valid JSON with this shape:
-{
-  "score": 0,
-  "misconceptionTag": null
-}
+    try {
+      completion = await withAnalysisTimeout(
+        "Comprehension scoring",
+        (signal) =>
+          runGroqCall(
+            {
+              operation: "scoreComprehension",
+              model: env.GROQ_MODEL,
+              topic,
+            },
+            () =>
+              groq.chat.completions.create(
+                {
+                  model: env.GROQ_MODEL,
+                  messages,
+                  temperature: 0,
+                  max_tokens: 180,
+                  response_format: { type: "json_object" },
+                },
+                {
+                  timeout: ANALYSIS_TIMEOUT_MS + SDK_TIMEOUT_BUFFER_MS,
+                  maxRetries: 0,
+                  signal,
+                },
+              ),
+          ),
+      );
+    } catch (error) {
+      throwFriendlyGroqError(error, { operation: "scoreComprehension" });
+    }
 
-Scoring rules:
-- 0-20: no relevant understanding, refusal, or empty/vague response.
-- 21-49: vague, memorized, or confused response with weak reasoning.
-- 50-74: partial understanding with gaps or unsupported assumptions.
-- 75-89: solid understanding with minor gaps.
-- 90-100: precise, transferable conceptual understanding.
+    const raw = completion.choices[0]?.message?.content;
+    const parsed = parseJsonObject(raw);
+    const normalized = parsed ? normalizeComprehensionScore(parsed) : null;
 
-misconceptionTag must be a short phrase such as "confuses correlation with causation", or null when no clear misconception is detected.
-Do not include explanation, markdown, or extra keys.
-`.trim(),
-              },
-              {
-                role: "user",
-                content: `
-Topic: ${topic}
+    if (normalized) {
+      return normalized;
+    }
 
-Conversation history:
-${conversationHistory || "No prior conversation."}
-
-Student message to score:
-${userMessage}
-`.trim(),
-              },
-            ],
-            temperature: 0,
-            max_tokens: 120,
-            response_format: { type: "json_object" },
-          },
-          {
-            timeout: ANALYSIS_TIMEOUT_MS + SDK_TIMEOUT_BUFFER_MS,
-            maxRetries: 0,
-            signal,
-          },
-        ),
-    );
-  } catch (error) {
-    throwFriendlyGroqError(error, { operation: "scoreComprehension" });
+    logger.warn("Invalid comprehension scoring JSON", {
+      operation: "scoreComprehension",
+      attempt,
+    });
   }
 
-  const raw = completion.choices[0]?.message?.content;
-  const parsed = parseJsonObject(raw);
+  logger.error("Comprehension scoring fell back after retry", {
+    operation: "scoreComprehension",
+    topic,
+    fallbackScore: fallback.score,
+  });
 
-  if (!parsed) {
-    return fallback;
-  }
-
-  return normalizeComprehensionScore(parsed, fallback);
+  return fallback;
 }
 
 /**
@@ -132,13 +133,21 @@ export async function generateThinkingMap(
 
   try {
     completion = await withAnalysisTimeout("Thinking Map generation", (signal) =>
-      groq.chat.completions.create(
+      runGroqCall(
         {
+          operation: "generateThinkingMap",
           model: env.GROQ_MODEL,
-          messages: [
+          topic: session.topic,
+          sessionId: session.id,
+        },
+        () =>
+          groq.chat.completions.create(
             {
-              role: "system",
-              content: `
+              model: env.GROQ_MODEL,
+              messages: [
+                {
+                  role: "system",
+                  content: `
 You generate SocraticAI Thinking Map data from a tutoring session.
 Return only valid JSON with exactly this shape:
 {
@@ -155,21 +164,22 @@ Rules:
 - keyInsight must identify the main conceptual shift.
 - Do not include markdown, explanations, or extra keys.
 `.trim(),
+                },
+                {
+                  role: "user",
+                  content: buildThinkingMapContext(session, orderedMessages),
+                },
+              ],
+              temperature: 0.2,
+              max_tokens: 600,
+              response_format: { type: "json_object" },
             },
             {
-              role: "user",
-              content: buildThinkingMapContext(session, orderedMessages),
+              timeout: ANALYSIS_TIMEOUT_MS + SDK_TIMEOUT_BUFFER_MS,
+              maxRetries: 0,
+              signal,
             },
-          ],
-          temperature: 0.2,
-          max_tokens: 600,
-          response_format: { type: "json_object" },
-        },
-        {
-          timeout: ANALYSIS_TIMEOUT_MS + SDK_TIMEOUT_BUFFER_MS,
-          maxRetries: 0,
-          signal,
-        },
+          ),
       ),
     );
   } catch (error) {
@@ -229,18 +239,33 @@ function parseJsonObject(value: string | null | undefined): Record<string, unkno
 
 function normalizeComprehensionScore(
   parsed: Record<string, unknown>,
-  fallback: ComprehensionScore,
-): ComprehensionScore {
+): ScoringResult | null {
+  if (
+    typeof parsed.score !== "number" ||
+    !Number.isFinite(parsed.score) ||
+    parsed.score < 0 ||
+    parsed.score > 100
+  ) {
+    return null;
+  }
+
+  if (typeof parsed.reasoning !== "string" || parsed.reasoning.trim().length === 0) {
+    return null;
+  }
+
+  if (!isConfidenceLevel(parsed.confidenceLevel)) {
+    return null;
+  }
+
   return {
-    score:
-      typeof parsed.score === "number" && Number.isFinite(parsed.score)
-        ? clampScore(parsed.score)
-        : fallback.score,
+    score: Math.round(parsed.score),
     misconceptionTag:
       typeof parsed.misconceptionTag === "string" &&
       parsed.misconceptionTag.trim().length > 0
         ? parsed.misconceptionTag.trim().slice(0, 80)
         : null,
+    reasoning: parsed.reasoning.trim().slice(0, 220),
+    confidenceLevel: parsed.confidenceLevel,
   };
 }
 
@@ -262,27 +287,81 @@ function normalizeThinkingMapData(
   };
 }
 
-function buildFallbackComprehensionScore(userMessage: string): ComprehensionScore {
-  const normalized = userMessage.trim().toLowerCase();
-  const vagueResponses = new Set([
-    "",
-    "idk",
-    "i don't know",
-    "i dont know",
-    "not sure",
-    "maybe",
-    "no idea",
-    "i guess",
-  ]);
+function buildFallbackComprehensionScore(): ScoringResult {
+  return {
+    score: 50,
+    misconceptionTag: null,
+    reasoning: "The scoring model could not return a valid calibrated result.",
+    confidenceLevel: "low",
+  };
+}
 
-  if (
-    vagueResponses.has(normalized) ||
-    normalized.split(/\s+/).filter(Boolean).length < 4
-  ) {
-    return { score: 25, misconceptionTag: "vague or unsupported response" };
-  }
+function buildComprehensionScoringMessages(
+  topic: string,
+  userMessage: string,
+  conversationHistory: string,
+): ChatMessage[] {
+  return [
+    {
+      role: "system",
+      content: `
+You score student comprehension for SocraticAI using a stable rubric.
+Return only valid JSON with this exact shape:
+{
+  "score": 0,
+  "misconceptionTag": null,
+  "reasoning": "one sentence explaining why this score was given",
+  "confidenceLevel": "low"
+}
 
-  return { score: 50, misconceptionTag: null };
+SCORING RUBRIC:
+- 0-20: No engagement, off-topic, or "I don't know"
+- 21-40: Surface-level engagement, restates the question, no reasoning
+- 41-60: Partial understanding, some correct reasoning but with gaps or a clear misconception
+- 61-80: Solid understanding, correct reasoning with minor imprecision
+- 81-100: Deep understanding, makes connections beyond the immediate question, anticipates edge cases
+
+Few-shot calibration examples:
+Example 1:
+Topic: Photosynthesis
+User response: I don't know, plants just eat sunlight.
+Expected JSON: {"score":18,"misconceptionTag":"plants eat sunlight","reasoning":"The response is mostly disengaged and shows a core misconception about energy conversion.","confidenceLevel":"high"}
+
+Example 2:
+Topic: Newton's third law
+User response: Forces come in pairs, but the bigger object probably pushes harder so it wins.
+Expected JSON: {"score":52,"misconceptionTag":"bigger object exerts larger paired force","reasoning":"The response identifies force pairs but keeps a clear misconception about equal and opposite interaction forces.","confidenceLevel":"high"}
+
+Example 3:
+Topic: Correlation and causation
+User response: A correlation can suggest a possible relationship, but it cannot prove one thing caused the other unless we control for other variables or have a causal design.
+Expected JSON: {"score":88,"misconceptionTag":null,"reasoning":"The response explains the key distinction and connects it to controls and causal study design.","confidenceLevel":"high"}
+
+Rules:
+- Use the full rubric range, but stay consistent with the examples.
+- misconceptionTag must be a short phrase or null.
+- reasoning must be exactly one sentence.
+- confidenceLevel must be "low", "medium", or "high".
+- Do not include markdown or extra keys.
+`.trim(),
+    },
+    {
+      role: "user",
+      content: `
+Topic: ${topic}
+
+Conversation history:
+${conversationHistory || "No prior conversation."}
+
+Student message to score:
+${userMessage}
+`.trim(),
+    },
+  ];
+}
+
+function isConfidenceLevel(value: unknown): value is ScoringResult["confidenceLevel"] {
+  return value === "low" || value === "medium" || value === "high";
 }
 
 function buildFallbackThinkingMap(

@@ -50,6 +50,8 @@ model Message {
   thinking           String?
   comprehensionScore Float?
   misconceptionTag   String?
+  reasoning          String?
+  confidenceLevel    String?
   createdAt          DateTime    @default(now())
   sessionId          String      @db.ObjectId
   session            Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)

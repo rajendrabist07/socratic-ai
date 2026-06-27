@@ -1,6 +1,7 @@
 import Groq from "groq-sdk";
 import { TRPCError } from "@trpc/server";
 import { env } from "@/env";
+import { logger } from "@/lib/logger";
 
 // ─── Singleton client ────────────────────────────────────────────────────────
 
@@ -25,6 +26,8 @@ export interface SocraticResponse {
 
 type GroqErrorContext = {
   operation: string;
+  model?: string;
+  topic?: string;
   userId?: string;
   sessionId?: string;
 };
@@ -85,13 +88,17 @@ export async function askSocratic(
   let completion;
 
   try {
-    completion = await groq.chat.completions.create({
-      model: env.GROQ_MODEL,
-      messages,
-      temperature: 0.7,
-      max_tokens: 1024,
-      response_format: { type: "json_object" },
-    });
+    completion = await runGroqCall(
+      { operation: "askSocratic", model: env.GROQ_MODEL },
+      () =>
+        groq.chat.completions.create({
+          model: env.GROQ_MODEL,
+          messages,
+          temperature: 0.7,
+          max_tokens: 1024,
+          response_format: { type: "json_object" },
+        }),
+    );
   } catch (error) {
     throwFriendlyGroqError(error, { operation: "askSocratic" });
   }
@@ -99,7 +106,7 @@ export async function askSocratic(
   const raw = completion.choices[0]?.message?.content;
 
   if (!raw) {
-    console.error("Groq returned an empty response", { operation: "askSocratic" });
+    logger.error("Groq returned an empty response", { operation: "askSocratic" });
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: "AI service temporarily unavailable. Please try again.",
@@ -111,7 +118,7 @@ export async function askSocratic(
   try {
     parsed = JSON.parse(raw) as Partial<SocraticResponse>;
   } catch {
-    console.error("Failed to parse Groq JSON response", { operation: "askSocratic" });
+    logger.error("Failed to parse Groq JSON response", { operation: "askSocratic" });
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: "AI service temporarily unavailable. Please try again.",
@@ -119,7 +126,7 @@ export async function askSocratic(
   }
 
   if (!parsed.question || typeof parsed.question !== "string") {
-    console.error("Invalid Groq response shape", {
+    logger.error("Invalid Groq response shape", {
       operation: "askSocratic",
       hasQuestion: typeof parsed.question,
     });
@@ -160,9 +167,10 @@ export function throwFriendlyGroqError(
 ): never {
   const status = getErrorStatus(error);
 
-  console.error("Groq request failed", {
+  logger.error("Groq request failed", {
     ...context,
-    status,
+    status: status ?? undefined,
+    errorType: error instanceof Error ? error.name : "UnknownError",
     message: error instanceof Error ? error.message : "Unknown error",
   });
 
@@ -191,6 +199,49 @@ export function throwFriendlyGroqError(
     code: "INTERNAL_SERVER_ERROR",
     message: "AI service temporarily unavailable. Please try again.",
   });
+}
+
+export async function runGroqCall<T>(
+  context: GroqErrorContext,
+  run: () => Promise<T>,
+): Promise<T> {
+  const startedAt = Date.now();
+
+  logger.info("Groq request started", {
+    operation: context.operation,
+    model: context.model,
+    topic: context.topic,
+    userId: context.userId,
+    sessionId: context.sessionId,
+  });
+
+  try {
+    const result = await run();
+
+    logger.info("Groq request succeeded", {
+      operation: context.operation,
+      model: context.model,
+      topic: context.topic,
+      userId: context.userId,
+      sessionId: context.sessionId,
+      durationMs: Date.now() - startedAt,
+    });
+
+    return result;
+  } catch (error) {
+    logger.error("Groq request failed", {
+      operation: context.operation,
+      model: context.model,
+      topic: context.topic,
+      userId: context.userId,
+      sessionId: context.sessionId,
+      durationMs: Date.now() - startedAt,
+      status: getErrorStatus(error) ?? undefined,
+      errorType: error instanceof Error ? error.name : "UnknownError",
+    });
+
+    throw error;
+  }
 }
 
 function getErrorStatus(error: unknown): number | null {

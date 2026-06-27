@@ -1,8 +1,17 @@
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
-import { generateThinkingMap } from "@/server/ai/analysis";
+import { generateThinkingMap, type ThinkingMapData } from "@/server/ai/analysis";
+import { logger } from "@/lib/logger";
+import { sessionRateLimit } from "@/lib/rate-limit";
 import { createTRPCRouter, protectedProcedure } from "@/server/trpc";
+
+const NOT_ENOUGH_CONVERSATION_THINKING_MAP: ThinkingMapData = {
+  summary: "Not enough conversation to generate insights yet.",
+  keyInsight: "Try asking a few more questions first.",
+  misconceptions: [],
+  scoreTimeline: [],
+};
 
 export const sessionRouter = createTRPCRouter({
   // List all sessions for the current user
@@ -47,7 +56,22 @@ export const sessionRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Upsert so first session also creates the User row
+      const { success, remaining } = await sessionRateLimit.limit(ctx.userId);
+
+      if (!success) {
+        logger.warn("Rate limit hit", {
+          endpoint: "session.create",
+          userId: ctx.userId,
+          remaining,
+        });
+
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "You're creating sessions too fast. Please wait a moment.",
+        });
+      }
+
+      // MongoDB does not enforce relational integrity, so ensure the User row exists.
       const user = await ctx.db.user.upsert({
         where: { clerkId: ctx.userId },
         update: {},
@@ -61,6 +85,7 @@ export const sessionRouter = createTRPCRouter({
         data: {
           title: input.title,
           topic: input.topic,
+          status: "ACTIVE",
           userId: user.id,
         },
       });
@@ -81,6 +106,30 @@ export const sessionRouter = createTRPCRouter({
       });
     }),
 
+  delete: protectedProcedure
+    .input(z.object({ sessionId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db.user.findUnique({
+        where: { clerkId: ctx.userId },
+      });
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const session = await ctx.db.session.findFirst({
+        where: { id: input.sessionId, userId: user.id },
+      });
+
+      if (!session) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
+      }
+
+      await ctx.db.$transaction([
+        ctx.db.message.deleteMany({ where: { sessionId: input.sessionId } }),
+        ctx.db.session.delete({ where: { id: input.sessionId } }),
+      ]);
+
+      return { success: true };
+    }),
+
   generateThinkingMap: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
@@ -98,7 +147,10 @@ export const sessionRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
       }
 
-      const thinkingMap = await generateThinkingMap(session, session.messages);
+      const thinkingMap =
+        session.messages.length <= 1
+          ? NOT_ENOUGH_CONVERSATION_THINKING_MAP
+          : await generateThinkingMap(session, session.messages);
 
       return ctx.db.session.update({
         where: { id: session.id, userId: user.id },
