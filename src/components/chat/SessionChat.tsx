@@ -145,7 +145,14 @@ export function SessionChat({ sessionId }: SessionChatProps) {
           ) : sessionQuery.isError && showSessionError ? (
             <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p>Unable to load session. Please refresh.</p>
+                <div>
+                  <p className="font-semibold">Unable to load session. Please refresh.</p>
+                  {sessionQuery.error?.message && (
+                    <p className="text-xs mt-1 opacity-90">
+                      Error detail: {sessionQuery.error.message}
+                    </p>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowSessionError(false)}

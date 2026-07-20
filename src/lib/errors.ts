@@ -28,7 +28,15 @@ export function toFriendlyErrorMessage(
     message.includes(friendlyMessage),
   );
 
-  return knownMessage ?? fallback;
+  const friendly = knownMessage ?? fallback;
+  
+  if (process.env.NODE_ENV === "development" && message) {
+    return `${friendly} [Detail: ${message}]`;
+  }
+
+  return friendly;
+
+
 }
 
 function getTRPCErrorCode(error: unknown): string | null {
