@@ -11,7 +11,11 @@ const geist = Geist({
   variable: "--font-geist",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://socraticai.ai";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+  ? process.env.NEXT_PUBLIC_SITE_URL
+  : process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "https://socraticai.ai";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -26,15 +30,26 @@ export const metadata: Metadata = {
     "critical thinking",
   ],
   openGraph: {
-    title: "SocraticAI",
-    description: "Learn by thinking, not copying.",
-    images: ["/og-image.png"],
+    title: "SocraticAI — Learn by Thinking, Not Copying",
+    description: "An AI tutor that never gives you the answer — it asks the right question so you discover it yourself.",
+    url: siteUrl,
+    siteName: "SocraticAI",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "SocraticAI — Learn by thinking, not copying.",
+      },
+    ],
+    locale: "en_US",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "SocraticAI",
-    description: "Learn by thinking, not copying.",
+    title: "SocraticAI — Learn by Thinking, Not Copying",
+    description: "An AI tutor that never gives you the answer — it asks the right question so you discover it yourself.",
+    images: ["/og-image.png"],
   },
   icons: {
     icon: "/favicon.svg",
