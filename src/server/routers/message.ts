@@ -96,12 +96,16 @@ export const messageRouter = createTRPCRouter({
         },
       });
 
-      const messages = await ctx.db.message.findMany({
+      // Optimize: Fetch only the last 20 messages for context, keeping it bounded and fast.
+      const recentMessages = await ctx.db.message.findMany({
         where: { sessionId: session.id },
-        orderBy: { createdAt: "asc" },
+        orderBy: { createdAt: "desc" },
+        take: 20,
       });
+      const messages = recentMessages.reverse();
 
-      void scoreComprehensionAndSave({
+      // Trigger scoring in parallel
+      const scoringPromise = scoreComprehensionAndSave({
         ctx,
         messageId: userMessage.id,
         topic: session.topic,
@@ -163,6 +167,7 @@ export const messageRouter = createTRPCRouter({
           ctx,
           sessionId: session.id,
           stream: groqStream,
+          scoringPromise,
         });
       } catch (error) {
         throwFriendlyGroqError(error, {
@@ -214,10 +219,12 @@ function streamTokensAndSaveAssistantMessage({
   ctx,
   sessionId,
   stream,
+  scoringPromise,
 }: {
   ctx: ProtectedContext;
   sessionId: string;
   stream: AsyncIterable<StreamChunk>;
+  scoringPromise?: Promise<void>;
 }): AsyncIterable<string> {
   return {
     async *[Symbol.asyncIterator]() {
@@ -252,6 +259,20 @@ function streamTokensAndSaveAssistantMessage({
             content,
           },
         });
+      }
+
+      // Safeguard: Await parallel scoring completion before terminating Vercel environment.
+      if (scoringPromise) {
+        try {
+          await scoringPromise;
+        } catch (error) {
+          logger.error("Scoring promise failed to resolve inside stream", {
+            operation: "message.send.stream.scoring",
+            userId: ctx.userId,
+            sessionId,
+            message: error instanceof Error ? error.message : "Unknown error",
+          });
+        }
       }
     },
   };

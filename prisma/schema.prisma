@@ -33,7 +33,7 @@ model Session {
   userId    String        @db.ObjectId
   user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages  Message[]
-  @@index([userId])
+  @@index([userId, updatedAt(sort: Desc)])
   @@map("sessions")
 }
 
@@ -55,7 +55,7 @@ model Message {
   createdAt          DateTime    @default(now())
   sessionId          String      @db.ObjectId
   session            Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  @@index([sessionId])
+  @@index([sessionId, createdAt(sort: Asc)])
   @@map("messages")
 }
 

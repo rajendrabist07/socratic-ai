@@ -29,13 +29,14 @@ function createNoopRateLimiter(name: string): RateLimiter {
   };
 }
 
-const redis =
+export const redis =
   upstashUrl && upstashToken
     ? new Redis({
         url: upstashUrl,
         token: upstashToken,
       })
     : null;
+
 
 export const chatRateLimit: RateLimiter = redis
   ? new Ratelimit({

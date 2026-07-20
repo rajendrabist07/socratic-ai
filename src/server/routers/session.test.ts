@@ -18,7 +18,13 @@ vi.mock("@/lib/rate-limit", () => ({
       reset: Date.now() + 3_600_000,
     }),
   },
+  redis: {
+    get: vi.fn(),
+    set: vi.fn(),
+    del: vi.fn(),
+  },
 }));
+
 
 vi.mock("@/server/db/client", () => ({
   db: {},

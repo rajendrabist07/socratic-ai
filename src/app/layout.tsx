@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import ClerkProviderClient from "@/lib/ClerkProviderClient";
 import { TRPCProvider } from "@/lib/providers";
-import Nav from "@/components/Nav";
+import { AppLayout } from "@/components/sidebar/AppLayout";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import "./globals.css";
 
@@ -59,15 +59,13 @@ export default function RootLayout({
       <body className={`${geist.className} min-h-screen bg-background text-foreground antialiased`}>
         <ClerkProviderClient>
           <ErrorBoundary>
-            <div className="min-h-screen">
-              <Nav />
-              <main className="mx-auto w-full max-w-6xl animate-page-in px-4 py-5 sm:px-6 sm:py-8">
-                <TRPCProvider>{children}</TRPCProvider>
-              </main>
-            </div>
+            <TRPCProvider>
+              <AppLayout>{children}</AppLayout>
+            </TRPCProvider>
           </ErrorBoundary>
         </ClerkProviderClient>
       </body>
     </html>
   );
 }
+

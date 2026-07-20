@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { generateThinkingMap, type ThinkingMapData } from "@/server/ai/analysis";
 import { logger } from "@/lib/logger";
-import { sessionRateLimit } from "@/lib/rate-limit";
+import { sessionRateLimit, redis } from "@/lib/rate-limit";
 import { createTRPCRouter, protectedProcedure } from "@/server/trpc";
 
 const NOT_ENOUGH_CONVERSATION_THINKING_MAP: ThinkingMapData = {
@@ -16,17 +16,47 @@ const NOT_ENOUGH_CONVERSATION_THINKING_MAP: ThinkingMapData = {
 export const sessionRouter = createTRPCRouter({
   // List all sessions for the current user
   list: protectedProcedure.query(async ({ ctx }) => {
+    const cacheKey = `socratic:user:${ctx.userId}:sessions`;
+
+    // 1. Check Redis Cache
+    if (redis) {
+      try {
+        const cached = await redis.get(cacheKey) as any[] | null;
+        if (cached && Array.isArray(cached)) {
+          return cached.map((s) => ({
+            ...s,
+            createdAt: new Date(s.createdAt),
+            updatedAt: new Date(s.updatedAt),
+          }));
+        }
+      } catch (e) {
+        logger.error("Redis session list read error", { userId: ctx.userId, error: String(e) });
+      }
+    }
+
+    // 2. Fetch from Database
     const user = await ctx.db.user.findUnique({
       where: { clerkId: ctx.userId },
     });
 
     if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
 
-    return ctx.db.session.findMany({
+    const sessions = await ctx.db.session.findMany({
       where: { userId: user.id },
       orderBy: { updatedAt: "desc" },
       include: { _count: { select: { messages: true } } },
     });
+
+    // 3. Save to Redis Cache (5-minute TTL)
+    if (redis) {
+      try {
+        await redis.set(cacheKey, sessions, { ex: 300 });
+      } catch (e) {
+        logger.error("Redis session list write error", { userId: ctx.userId, error: String(e) });
+      }
+    }
+
+    return sessions;
   }),
 
   // Get a single session with messages
@@ -81,7 +111,7 @@ export const sessionRouter = createTRPCRouter({
         },
       });
 
-      return ctx.db.session.create({
+      const session = await ctx.db.session.create({
         data: {
           title: input.title,
           topic: input.topic,
@@ -89,6 +119,9 @@ export const sessionRouter = createTRPCRouter({
           userId: user.id,
         },
       });
+
+      await invalidateSessionCache(ctx.userId);
+      return session;
     }),
 
   // Archive a session
@@ -100,10 +133,13 @@ export const sessionRouter = createTRPCRouter({
       });
       if (!user) throw new TRPCError({ code: "NOT_FOUND" });
 
-      return ctx.db.session.update({
+      const session = await ctx.db.session.update({
         where: { id: input.id, userId: user.id },
         data: { status: "ARCHIVED" },
       });
+
+      await invalidateSessionCache(ctx.userId);
+      return session;
     }),
 
   delete: protectedProcedure
@@ -127,6 +163,7 @@ export const sessionRouter = createTRPCRouter({
         ctx.db.session.delete({ where: { id: input.sessionId } }),
       ]);
 
+      await invalidateSessionCache(ctx.userId);
       return { success: true };
     }),
 
@@ -152,7 +189,7 @@ export const sessionRouter = createTRPCRouter({
           ? NOT_ENOUGH_CONVERSATION_THINKING_MAP
           : await generateThinkingMap(session, session.messages);
 
-      return ctx.db.session.update({
+      const updatedSession = await ctx.db.session.update({
         where: { id: session.id, userId: user.id },
         data: {
           status: "COMPLETED",
@@ -160,5 +197,18 @@ export const sessionRouter = createTRPCRouter({
         },
         include: { messages: { orderBy: { createdAt: "asc" } } },
       });
+
+      await invalidateSessionCache(ctx.userId);
+      return updatedSession;
     }),
 });
+
+async function invalidateSessionCache(userId: string) {
+  if (redis) {
+    try {
+      await redis.del(`socratic:user:${userId}:sessions`);
+    } catch (e) {
+      logger.error("Failed to invalidate session list cache", { userId, error: String(e) });
+    }
+  }
+}
