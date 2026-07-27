@@ -52,7 +52,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
             href="/dashboard"
             className="flex items-center gap-2 font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-accent/40 rounded-full px-2"
           >
-            <Image src="/socraticai-logo.svg" alt="SocraticAI logo" width={20} height={20} />
+            <Image src="/socraticai-logo.png" alt="SocraticAI logo" width={20} height={20} className="rounded-full" />
             <span className="font-bold tracking-tight">SocraticAI</span>
           </Link>
           

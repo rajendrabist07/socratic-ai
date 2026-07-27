@@ -14,11 +14,12 @@ export default function Nav() {
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface-elevated shadow-soft">
             <Image
-              src="/socraticai-logo.svg"
+              src="/socraticai-logo.png"
               alt="SocraticAI logo"
               width={24}
               height={24}
               priority={false}
+              className="rounded-full"
             />
           </span>
           <span className="truncate">SocraticAI</span>

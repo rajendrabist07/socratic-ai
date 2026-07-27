@@ -196,11 +196,12 @@ export function Sidebar() {
           >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface-elevated shadow-soft">
               <Image
-                src="/socraticai-logo.svg"
+                src="/socraticai-logo.png"
                 alt="SocraticAI Logo"
                 width={20}
                 height={20}
                 priority
+                className="rounded-full"
               />
             </span>
             {(!isDesktopCollapsed || isMobileOpen) && (
