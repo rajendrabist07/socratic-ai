@@ -1,0 +1,47 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+        env:
+          DATABASE_URL: "mongodb+srv://dummy:dummy@cluster.mongodb.net/dummy?retryWrites=true&w=majority"
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run TypeScript Compile Check
+        run: npm run typecheck
+
+      - name: Run Unit & Integration Tests
+        run: npm run test
+
+      - name: Verify Production Compilation
+        run: npm run build
+        env:
+          DATABASE_URL: "mongodb+srv://dummy:dummy@cluster.mongodb.net/dummy?retryWrites=true&w=majority"
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_dGVzdC1jbGVyay1wdWJsaXNoYWJsZS1rZXk="
+          CLERK_SECRET_KEY: "sk_test_dGVzdC1jbGVyay1zZWNyZXQta2V5LXN1cGVyLXNlY3VyZQ=="
+          GROQ_API_KEY: "gsk_dGVzdC1ncm9xLWFwaS1rZXktZm9yLWNpLXBpcGVsaW5l"
+          GROQ_MODEL: "llama-3.3-70b-versatile"
