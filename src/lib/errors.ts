@@ -18,25 +18,21 @@ export function toFriendlyErrorMessage(
 
   if (code === "TOO_MANY_REQUESTS") {
     if (message.includes("creating sessions")) {
-      return "You have reached the session limit. Please try again in about an hour.";
+      return "You have created sessions too fast. Please wait a few minutes before trying again.";
     }
 
-    return "You have reached the message limit. Please wait about a minute before trying again.";
+    return "You have sent messages too fast. Please wait a moment before trying again.";
+  }
+
+  if (message && message.trim().length > 0 && !message.includes("TRPCClientError") && !message.includes("Object")) {
+    return message;
   }
 
   const knownMessage = FRIENDLY_ERROR_MESSAGES.find((friendlyMessage) =>
     message.includes(friendlyMessage),
   );
 
-  const friendly = knownMessage ?? fallback;
-  
-  if (process.env.NODE_ENV === "development" && message) {
-    return `${friendly} [Detail: ${message}]`;
-  }
-
-  return friendly;
-
-
+  return knownMessage ?? fallback;
 }
 
 function getTRPCErrorCode(error: unknown): string | null {

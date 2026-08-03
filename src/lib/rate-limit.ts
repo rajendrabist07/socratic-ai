@@ -48,6 +48,6 @@ export const chatRateLimit: RateLimiter = redis
 export const sessionRateLimit: RateLimiter = redis
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(5, "1 h"),
+      limiter: Ratelimit.slidingWindow(30, "1 h"),
     })
   : createNoopRateLimiter("sessionRateLimit");

@@ -52,8 +52,12 @@ function NewSessionContent() {
   return (
     <div className="w-full max-w-2xl rounded-2xl border border-border bg-surface p-6 shadow-soft sm:rounded-[2rem] sm:p-10">
       <div className="mb-8">
-        <span className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-          🎓 Start Learning
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 01-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+          </svg>
+          Start Learning
         </span>
         <h1 className="mt-4 text-3xl font-semibold text-foreground">What topic are you studying today?</h1>
         <p className="mt-3 text-sm leading-6 text-muted">
@@ -106,10 +110,10 @@ function NewSessionContent() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-2">
           <button
             type="submit"
-            className="inline-flex items-center justify-center rounded-full bg-accent px-8 py-4 text-base font-semibold text-white shadow-glow transition hover:bg-indigo-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-accent px-8 py-4 text-base font-semibold text-white shadow-glow transition hover:bg-indigo-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={create.isPending || !topic.trim()}
           >
-            {create.isPending ? "Creating your session…" : "Start Session &rarr;"}
+            {create.isPending ? "Creating your session…" : "Start Session →"}
           </button>
           <p className="text-xs leading-5 text-muted">
             Your tutor will ask one question at a time to help you master this concept.
