@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { db } from "@/server/db/client";
 
 export default async function DashboardPage() {
@@ -27,11 +28,12 @@ export default async function DashboardPage() {
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-4 sm:gap-5">
             {imageUrl ? (
-              <img
+              <Image
                 src={imageUrl}
                 alt={`${firstName}'s profile`}
-                loading="lazy"
-                referrerPolicy="no-referrer"
+                width={80}
+                height={80}
+                priority
                 className="h-16 w-16 shrink-0 rounded-full border border-border object-cover ring-2 ring-accent/40 ring-offset-4 ring-offset-surface sm:h-20 sm:w-20"
               />
             ) : (
