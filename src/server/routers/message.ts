@@ -32,14 +32,34 @@ type ProtectedContext = TRPCContext & {
 
 export const messageRouter = createTRPCRouter({
   list: protectedProcedure
-    .input(z.object({ sessionId: z.string().min(1) }))
+    .input(
+      z.object({
+        sessionId: z.string().min(1),
+        limit: z.number().min(1).max(100).default(50),
+        cursor: z.string().nullish(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
-      const session = await getOwnedSession(ctx, input.sessionId);
+      const { sessionId, limit, cursor } = input;
+      const session = await getOwnedSession(ctx, sessionId);
 
-      return ctx.db.message.findMany({
+      const items = await ctx.db.message.findMany({
+        take: limit + 1,
         where: { sessionId: session.id },
+        cursor: cursor ? { id: cursor } : undefined,
         orderBy: { createdAt: "asc" },
       });
+
+      let nextCursor: typeof cursor = undefined;
+      if (items.length > limit) {
+        const nextItem = items.pop();
+        nextCursor = nextItem?.id;
+      }
+
+      return {
+        items,
+        nextCursor,
+      };
     }),
 
   send: protectedProcedure
