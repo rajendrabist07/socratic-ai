@@ -12,8 +12,8 @@ jobs:
 
     env:
       DATABASE_URL: "mongodb+srv://dummy:dummy@cluster.mongodb.net/dummy?retryWrites=true&w=majority"
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_dGVzdC1jbGVyay1wdWJsaXNoYWJsZS1rZXk="
-      CLERK_SECRET_KEY: "sk_test_dGVzdC1jbGVyay1zZWNyZXQta2V5LXN1cGVyLXNlY3VyZQ=="
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_c3VjY2Vzc2Z1bC1tYWNhdy04Mi5jbGVyay5hY2NvdW50cy5kZXYk"
+      CLERK_SECRET_KEY: "sk_test_1234567890123456789012345678901234567890123"
       GROQ_API_KEY: "gsk_dGVzdC1ncm9xLWFwaS1rZXktZm9yLWNpLXBpcGVsaW5l"
       GROQ_MODEL: "llama-3.3-70b-versatile"
 
