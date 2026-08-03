@@ -4,7 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { generateThinkingMap, type ThinkingMapData } from "@/server/ai/analysis";
 import { logger } from "@/lib/logger";
 import { sessionRateLimit, redis } from "@/lib/rate-limit";
-import { createTRPCRouter, protectedProcedure } from "@/server/trpc";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/trpc";
 
 const NOT_ENOUGH_CONVERSATION_THINKING_MAP: ThinkingMapData = {
   summary: "Not enough conversation to generate insights yet.",
@@ -75,6 +75,48 @@ export const sessionRouter = createTRPCRouter({
 
       if (!session) throw new TRPCError({ code: "NOT_FOUND" });
       return session;
+    }),
+
+  // Get a public shareable session (unauthenticated)
+  getPublic: publicProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const session = await ctx.db.session.findFirst({
+        where: { id: input.id, isPublic: true },
+        include: { messages: { orderBy: { createdAt: "asc" } } },
+      });
+
+      if (!session) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Public session not found or link is private.",
+        });
+      }
+
+      return session;
+    }),
+
+  // Toggle public accessibility of a session
+  togglePublic: protectedProcedure
+    .input(z.object({ id: z.string().min(1), isPublic: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db.user.findUnique({
+        where: { clerkId: ctx.userId },
+      });
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const session = await ctx.db.session.findFirst({
+        where: { id: input.id, userId: user.id },
+      });
+      if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const updated = await ctx.db.session.update({
+        where: { id: session.id },
+        data: { isPublic: input.isPublic },
+      });
+
+      await invalidateSessionCache(ctx.userId);
+      return updated;
     }),
 
   // Create a new session

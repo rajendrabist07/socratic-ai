@@ -10,6 +10,7 @@ import {
 import { ThinkingMap } from "@/components/thinking-map/ThinkingMap";
 import type { ThinkingMapData } from "@/server/ai/analysis";
 import { toFriendlyErrorMessage } from "@/lib/errors";
+import { exportSessionAsMarkdown, exportSessionAsPrintablePDF } from "@/lib/export-utils";
 
 interface SessionChatProps {
   sessionId: string;
@@ -27,11 +28,34 @@ export function SessionChat({ sessionId }: SessionChatProps) {
   const [isThinkingMapTakingLonger, setIsThinkingMapTakingLonger] =
     useState(false);
 
+  const [copiedShareLink, setCopiedShareLink] = useState(false);
+
   const generateThinkingMap = trpc.session.generateThinkingMap.useMutation({
     onSuccess: () => {
       void sessionQuery.refetch();
     },
   });
+
+  const togglePublic = trpc.session.togglePublic.useMutation({
+    onSuccess: () => {
+      void sessionQuery.refetch();
+    },
+  });
+
+  const handleCopyPublicLink = async () => {
+    const isCurrentlyPublic = sessionQuery.data?.isPublic;
+    if (!isCurrentlyPublic) {
+      await togglePublic.mutateAsync({ id: sessionId, isPublic: true });
+    }
+    const url = `${window.location.origin}/share/${sessionId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedShareLink(true);
+      setTimeout(() => setCopiedShareLink(false), 3000);
+    } catch (e) {
+      console.error("Failed to copy link", e);
+    }
+  };
 
   useEffect(() => {
     setOptimisticMessages(sessionQuery.data?.messages ?? []);
@@ -129,9 +153,24 @@ export function SessionChat({ sessionId }: SessionChatProps) {
               Your AI tutor asks guiding questions instead of giving copy-paste answers, helping you truly master the concept.
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-surface-elevated px-4 py-3 text-sm text-foreground sm:max-w-xs sm:rounded-3xl">
-            <p className="font-semibold text-foreground text-xs uppercase tracking-wider text-muted">Current Topic</p>
-            <p className="break-words font-medium mt-1">{sessionQuery.data?.topic ?? "Loading..."}</p>
+          <div className="flex flex-col gap-2 sm:items-end">
+            <div className="rounded-2xl border border-border bg-surface-elevated px-4 py-3 text-sm text-foreground sm:max-w-xs sm:rounded-3xl">
+              <p className="font-semibold text-foreground text-xs uppercase tracking-wider text-muted">Current Topic</p>
+              <p className="break-words font-medium mt-1">{sessionQuery.data?.topic ?? "Loading..."}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyPublicLink}
+              disabled={togglePublic.isPending}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-elevated px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-accent hover:text-accent active:scale-95"
+            >
+              <span>🌐</span>
+              {copiedShareLink
+                ? "Link Copied!"
+                : sessionQuery.data?.isPublic
+                  ? "Copy Public Link"
+                  : "Make Public & Share"}
+            </button>
           </div>
         </div>
       </div>
@@ -193,19 +232,46 @@ export function SessionChat({ sessionId }: SessionChatProps) {
 
         <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between sm:rounded-[2rem] sm:p-6">
           <div>
-            <h3 className="text-base font-semibold text-foreground">Wrap Up & See Progress</h3>
+            <h3 className="text-base font-semibold text-foreground">Wrap Up & Export Notes</h3>
             <p className="mt-1 text-sm text-muted">
-              Finished studying? Generate your personalized Learning Breakdown and understanding score.
+              Finished studying? Export your notes as Markdown (.md), print as PDF, or view your Learning Breakdown.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleEndSession}
-            disabled={generateThinkingMap.isPending || messages.length === 0}
-            className="inline-flex items-center justify-center rounded-full border border-border bg-foreground px-6 py-3.5 text-sm font-semibold text-background transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 shadow-soft"
-          >
-            {generateThinkingMap.isPending ? "Analyzing Your Learning..." : "Wrap Up & See What You Learned"}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {messages.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    exportSessionAsMarkdown(
+                      sessionQuery.data?.title ?? "study-notes",
+                      sessionQuery.data?.topic ?? "general",
+                      messages,
+                      thinkingMap,
+                    )
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-elevated px-4 py-2.5 text-xs font-semibold text-foreground transition hover:border-accent hover:text-accent active:scale-95"
+                >
+                  📥 Export .md
+                </button>
+                <button
+                  type="button"
+                  onClick={() => exportSessionAsPrintablePDF()}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-elevated px-4 py-2.5 text-xs font-semibold text-foreground transition hover:border-accent hover:text-accent active:scale-95"
+                >
+                  🖨️ PDF / Print
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={handleEndSession}
+              disabled={generateThinkingMap.isPending || messages.length === 0}
+              className="inline-flex items-center justify-center rounded-full border border-border bg-foreground px-5 py-2.5 text-xs font-semibold text-background transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 shadow-soft"
+            >
+              {generateThinkingMap.isPending ? "Analyzing..." : "Wrap Up & See Breakdown"}
+            </button>
+          </div>
         </div>
 
         {generateThinkingMap.error && showThinkingMapError ? (

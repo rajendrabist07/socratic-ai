@@ -15,9 +15,15 @@ interface ChatMessageListProps {
 export function ChatMessageList({ messages, isThinking = false }: ChatMessageListProps) {
   if (messages.length === 0 && !isThinking) {
     return (
-      <p className="rounded-2xl border border-dashed border-border bg-surface px-5 py-10 text-center text-sm leading-6 text-muted">
-        Start by sharing what you think about the topic. SocraticAI will respond with one guiding question.
-      </p>
+      <div className="rounded-2xl border border-dashed border-border bg-surface/80 px-5 py-10 text-center text-sm leading-6 text-muted space-y-3">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-xl text-accent">
+          💡
+        </div>
+        <p className="font-semibold text-foreground text-base">Ready to start reasoning?</p>
+        <p className="max-w-md mx-auto text-xs sm:text-sm text-muted">
+          Type what you already know or ask a starting question below. Your Socratic tutor will ask a guiding question to test your understanding step-by-step!
+        </p>
+      </div>
     );
   }
 

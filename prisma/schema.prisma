@@ -27,6 +27,7 @@ model Session {
   title     String
   topic     String
   status    SessionStatus @default(ACTIVE)
+  isPublic  Boolean       @default(false)
   thinkingMap Json?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
