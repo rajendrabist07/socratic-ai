@@ -31,8 +31,36 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
         httpBatchStreamLink({
           transformer: superjson,
           url: "/api/trpc",
-          fetch(url, options) {
-            return fetch(url, { ...options, credentials: "include" });
+          async fetch(url, options) {
+            const res = await fetch(url, { ...options, credentials: "include" });
+            const contentType = res.headers.get("content-type") || "";
+
+            // Intercept non-JSON HTML error responses (500/504 gateway timeouts) so tRPC never crashes on <!DOCTYPE
+            if (contentType.includes("text/html") || (!res.ok && !contentType.includes("application/json"))) {
+              let friendlyMessage = "Server connection issue. Please refresh or try again.";
+              if (res.status === 504 || res.status === 502) {
+                friendlyMessage = "Server response timed out. Please try again in a moment.";
+              } else if (res.status === 401 || res.status === 403) {
+                friendlyMessage = "Session expired. Please refresh your page or sign in again.";
+              }
+
+              const formattedJsonError = JSON.stringify([
+                {
+                  error: {
+                    message: friendlyMessage,
+                    code: -32603,
+                    data: { code: "INTERNAL_SERVER_ERROR", httpStatus: res.status },
+                  },
+                },
+              ]);
+
+              return new Response(formattedJsonError, {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+              });
+            }
+
+            return res;
           },
         }),
       ],

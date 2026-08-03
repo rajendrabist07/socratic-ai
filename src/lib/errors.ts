@@ -24,7 +24,20 @@ export function toFriendlyErrorMessage(
     return "You have sent messages too fast. Please wait a moment before trying again.";
   }
 
-  if (message && message.trim().length > 0 && !message.includes("TRPCClientError") && !message.includes("Object")) {
+  if (
+    message.includes("is not valid JSON") ||
+    message.includes("Unexpected token") ||
+    message.includes("<!DOCTYPE")
+  ) {
+    return "Temporary connection issue. Please refresh the page or try again.";
+  }
+
+  if (
+    message &&
+    message.trim().length > 0 &&
+    !message.includes("TRPCClientError") &&
+    !message.includes("Object")
+  ) {
     return message;
   }
 
