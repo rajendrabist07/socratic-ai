@@ -34,7 +34,7 @@ jobs:
         run: npx prisma generate
 
       - name: Run ESLint
-        run: npx eslint src --ext .ts,.tsx
+        run: npm run lint
 
       - name: Run TypeScript Compile Check
         run: npm run typecheck
