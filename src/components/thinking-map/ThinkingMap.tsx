@@ -40,32 +40,34 @@ export function ThinkingMap({ data }: ThinkingMapProps) {
     <section className="w-full space-y-4 rounded-2xl border border-border bg-surface p-4 shadow-soft sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-base font-semibold text-foreground">
-            Thinking Map
+          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-500 mb-2">
+            🎉 Session Completed
+          </span>
+          <h2 className="text-lg font-semibold text-foreground">
+            Your Learning Breakdown
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Comprehension path across the session
+            Summary of your key insights, mastered concepts, and progress
           </p>
         </div>
-
         <button
           type="button"
           onClick={handleShare}
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-border bg-surface-elevated px-3 text-sm font-medium text-foreground transition hover:border-accent/30 hover:bg-surface active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent/50"
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-border bg-surface-elevated px-4 text-sm font-medium text-foreground transition hover:border-accent/30 hover:bg-surface active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent/50"
         >
-          <span aria-hidden="true">URL</span>
+          <span aria-hidden="true">🔗</span>
           {shareState === "copied"
-            ? "Copied"
+            ? "Link Copied!"
             : shareState === "failed"
               ? "Copy failed"
-              : "Share"}
+              : "Share Summary"}
         </button>
       </div>
 
       <div className="rounded-2xl border border-border bg-background/70 p-3 sm:p-4">
         <div className="mb-3 flex items-center justify-between text-xs font-medium text-muted">
-          <span>Score timeline</span>
-          <span>0-100</span>
+          <span>Understanding Progress</span>
+          <span>Level (0-100)</span>
         </div>
 
         {timeline.length > 0 ? (

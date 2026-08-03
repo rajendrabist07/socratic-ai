@@ -121,15 +121,17 @@ export function SessionChat({ sessionId }: SessionChatProps) {
       <div className="rounded-2xl border border-border bg-surface p-4 shadow-soft sm:rounded-[2rem] sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent sm:tracking-[0.3em]">Live chat</p>
-            <h2 className="mt-3 text-xl font-semibold text-foreground sm:text-2xl">Ask questions, get Socratic guidance.</h2>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
+              💡 Socratic Mode Active
+            </span>
+            <h2 className="mt-3 text-xl font-semibold text-foreground sm:text-2xl">Ask questions, discover answers.</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              The assistant responds with one guiding question that targets your current reasoning.
+              Your AI tutor asks guiding questions instead of giving copy-paste answers, helping you truly master the concept.
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-surface-elevated px-4 py-3 text-sm text-foreground sm:max-w-xs sm:rounded-3xl">
-            <p className="font-semibold text-foreground">Topic</p>
-            <p className="break-words">{sessionQuery.data?.topic ?? "Loading..."}</p>
+            <p className="font-semibold text-foreground text-xs uppercase tracking-wider text-muted">Current Topic</p>
+            <p className="break-words font-medium mt-1">{sessionQuery.data?.topic ?? "Loading..."}</p>
           </div>
         </div>
       </div>
@@ -146,7 +148,7 @@ export function SessionChat({ sessionId }: SessionChatProps) {
             <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="font-semibold">Unable to load session. Please refresh.</p>
+                  <p className="font-semibold">Unable to load session.</p>
                   {sessionQuery.error?.message && (
                     <p className="text-xs mt-1 opacity-90">
                       Error detail: {sessionQuery.error.message}
@@ -179,30 +181,30 @@ export function SessionChat({ sessionId }: SessionChatProps) {
             onMessageSent={handleRefresh}
           />
           <p className="mt-3 text-xs text-muted">
-            Each response is intentionally limited to one guiding question.
+            💡 Tip: Be as detailed as possible in your answers. The tutor uses your responses to build your custom learning profile.
           </p>
         </div>
 
         {isSessionTakingLonger || isThinkingMapTakingLonger ? (
           <p className="rounded-2xl border border-border bg-surface-elevated px-4 py-3 text-sm text-muted">
-            This is taking longer than usual...
+            Thinking... This may take a few seconds.
           </p>
         ) : null}
 
         <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between sm:rounded-[2rem] sm:p-6">
           <div>
-            <h3 className="text-base font-semibold text-foreground">Session wrap-up</h3>
+            <h3 className="text-base font-semibold text-foreground">Wrap Up & See Progress</h3>
             <p className="mt-1 text-sm text-muted">
-              Generate a Thinking Map from this conversation.
+              Finished studying? Generate your personalized Learning Breakdown and understanding score.
             </p>
           </div>
           <button
             type="button"
             onClick={handleEndSession}
             disabled={generateThinkingMap.isPending || messages.length === 0}
-            className="inline-flex items-center justify-center rounded-full border border-border bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-full border border-border bg-foreground px-6 py-3.5 text-sm font-semibold text-background transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 shadow-soft"
           >
-            {generateThinkingMap.isPending ? "Generating..." : "End Session"}
+            {generateThinkingMap.isPending ? "Analyzing Your Learning..." : "Wrap Up & See What You Learned"}
           </button>
         </div>
 
